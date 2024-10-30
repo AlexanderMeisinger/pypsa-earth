@@ -743,6 +743,9 @@ if config["augmented_line_connection"].get("add_to_snakefile", False) == False:
 
 
 rule add_extra_components:
+    params:
+        electricity_export=config["electricity-export"],
+        snapshots=config["snapshots"],
     input:
         network="networks/" + RDIR + "elec_s{simpl}_{clusters}.nc",
         tech_costs=COSTS,
