@@ -26,7 +26,7 @@ offwind-dc-connection-submarine,2030,investment,2000,EUR/MW/km,DTU report based 
 offwind-dc-connection-underground,2030,investment,1000,EUR/MW/km,Haertel 2017; average + 13% learning reduction
 solar,2030,investment,600,EUR/kWel,DIW DataDoc http://hdl.handle.net/10419/80348
 biomass,2030,investment,2209,EUR/kWel,DIW DataDoc http://hdl.handle.net/10419/80348
-geothermal,2030,investment,3392,EUR/kWel,DIW DataDoc http://hdl.handle.net/10419/80348
+geothermal,2030,investment,1949,EUR/kWel,https://energy.go.ke/sites/default/files/KAWI/Kenya-ETIP-2050%202.pdf p. 54; conversion factor 0.93
 coal,2030,investment,1300,EUR/kWel,DIW DataDoc http://hdl.handle.net/10419/80348 PC (Advanced/SuperC)
 lignite,2030,investment,1500,EUR/kWel,DIW DataDoc http://hdl.handle.net/10419/80348
 solar-rooftop,2030,investment,725,EUR/kWel,ETIP PV
@@ -84,7 +84,7 @@ oil,2030,efficiency,0.393,per unit,DIW DataDoc http://hdl.handle.net/10419/80348
 coal,2030,CO2 intensity,0.354,tCO2/MWth,https://www.eia.gov/environment/emissions/co2_vol_mass.php
 lignite,2030,CO2 intensity,0.334,tCO2/MWth,https://www.eia.gov/environment/emissions/co2_vol_mass.php
 oil,2030,CO2 intensity,0.248,tCO2/MWth,https://www.eia.gov/environment/emissions/co2_vol_mass.php
-geothermal,2030,CO2 intensity,0.026,tCO2/MWth,https://www.eia.gov/environment/emissions/co2_vol_mass.php
+geothermal,2030,CO2 intensity,0,tCO2/MWth,https://www.eia.gov/environment/emissions/co2_vol_mass.php
 electrolysis,2030,investment,350,EUR/kWel,Palzer Thesis
 electrolysis,2030,FOM,4,%/year,NREL http://www.nrel.gov/docs/fy09osti/45873.pdf; budischak2013
 electrolysis,2030,lifetime,18,years,NREL http://www.nrel.gov/docs/fy09osti/45873.pdf; budischak2013
