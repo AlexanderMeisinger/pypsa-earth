@@ -67,15 +67,15 @@ def select_ports(n):
 
 
 def add_export(n, hydrogen_buses_ports, export_profile):
-    country_shape = gpd.read_file(snakemake.input["shapes_path"])
+    #country_shape = gpd.read_file(snakemake.input["shapes_path"])
     # Find most northwestern point in country shape and get x and y coordinates
-    country_shape = country_shape.to_crs(
-        "EPSG:3395"
-    )  # Project to Mercator projection (Projected)
+    #country_shape = country_shape.to_crs(
+    #    "EPSG:3395"
+    #)  # Project to Mercator projection (Projected)
 
     # Get coordinates of the most western and northern point of the country and add a buffer of 2 degrees (equiv. to approx 220 km)
-    x_export = country_shape.geometry.centroid.x.min() - 2
-    y_export = country_shape.geometry.centroid.y.max() + 2
+    #x_export = country_shape.geometry.centroid.x.min() - 2
+    #y_export = country_shape.geometry.centroid.y.max() + 2
 
     # add export bus
     n.add(
@@ -83,8 +83,8 @@ def add_export(n, hydrogen_buses_ports, export_profile):
         "H2 export bus",
         carrier="H2",
         location="Earth",
-        x=x_export,
-        y=y_export,
+        x=39.658871+2,
+        y=-4.043740,
     )
 
     # add export links
