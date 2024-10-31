@@ -225,6 +225,60 @@ def attach_stores(n, costs, config):
         )
 
 
+def attach_electricity_export(n, config): 
+    if config["electricity-export"]["electricity-export"]:
+        logger.info("Adding export electricity. Demand: %s TWh", abs(config["electricity-export"]["export_demand"]))
+        # add export bus
+        n.add(
+            "Bus",
+            "Electricity export bus",
+            carrier="export",
+            location="Earth",
+            x=39.658871+2,
+            y=-4.043740,
+        )
+        # add export links
+        n.madd(
+            "Link",
+            names=n.buses.index[~n.buses.index.str.contains("H2|battery")] + " export",
+            bus0=n.buses.index[~n.buses.index.str.contains("H2|battery")],
+            bus1="Electricity export bus",
+            carrier="export",
+            p_nom_extendable=True,
+        )
+        # add store depending on config settings
+        n.add(
+            "Store",
+            "Electricity export store",
+            bus="Electricity export bus",
+            carrier="export",
+            e_nom_extendable=True,
+            e_initial=0,  # actually not required, since e_cyclic=True
+            marginal_cost=0,
+            capital_cost=0,
+            e_cyclic=True,
+        )
+        # export profile
+        export_el = config["electricity-export"]["export_demand"] * 1e6  # convert TWh to MWh
+        export_profile = export_el / 8760
+        snapshots = pd.date_range(freq="h", **snakemake.params.snapshots)
+        export_profile = pd.Series(export_profile, index=snapshots)
+        # Resample to temporal resolution defined in wildcard "sopts" with pandas resample
+        sopts = config["scenario"]["opts"][0].split("-")
+        export_profile = export_profile.resample(sopts[1].casefold()).mean()
+
+        # add load
+        n.add(
+            "Load",
+            "Electricity export load",
+            bus="Electricity export bus",
+            carrier="export",
+            p_set=export_profile 
+        )
+    else:
+        logger.info("No export electricity")
+
+
 def attach_hydrogen_pipelines(n, costs, config):
     elec_opts = config["electricity"]
     ext_carriers = elec_opts["extendable_carriers"]
@@ -287,6 +341,9 @@ if __name__ == "__main__":
 
     attach_storageunits(n, costs, config)
     attach_stores(n, costs, config)
+
+    attach_electricity_export(n, config)
+    
     attach_hydrogen_pipelines(n, costs, config)
 
     add_nice_carrier_names(n, config=snakemake.config)

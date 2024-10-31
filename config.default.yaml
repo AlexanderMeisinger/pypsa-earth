@@ -16,7 +16,7 @@ costs_dir: data/ # TODO change to the equivalent of technology data
 foresight: overnight
 
 
-countries: ["NG", "BJ"]
+countries: ["CM"]
 # Can be replaced by country ["NG", "BJ"], continent ["Africa"] or user-specific region, see more at https://pypsa-earth.readthedocs.io/en/latest/configuration.html#top-level-configuration
 
 enable:
@@ -44,14 +44,19 @@ run:
 scenario:
   simpl: [""]
   ll: ["copt"]
-  clusters: [10]
-  opts: [Co2L-3H]
+  clusters: [8]
+  opts: [Co2L1-1H]
   planning_horizons: # investment years for myopic and perfect; or costs year for overnight
   - 2030
   sopts:
-  - "144H"
+  - ""
   demand:
   - "AB"
+
+  # definition of electricity export option 
+electricity-export:
+  electricity-export: True # True: Consider electricity export option, False: No electricity export option
+  export_demand: 9 # Electricity export in TWh
 
 snapshots:
   start: "2013-01-01"
@@ -149,7 +154,7 @@ electricity:
   base_voltage: 380.
   voltages: [132., 220., 300., 380., 500., 750.]
   co2limit: 7.75e+7 # European default, 0.05 * 3.1e9*0.5, needs to be adjusted for Africa
-  co2base: 1.487e+9 # European default, adjustment to Africa necessary
+  co2base: 2.056e+6 # Source: https://www.iea.org/countries/cameroon/electricity
   agg_p_nom_limits: data/agg_p_nom_minmax.csv
   hvdc_as_lines: false # should HVDC lines be modeled as `Line` or as `Link` component?
   automatic_emission: false
@@ -355,8 +360,8 @@ renewable:
 # TODO: Needs to be adjusted for Africa.
 costs:
   year: 2030
-  version: v0.6.2
-  discountrate: [0.071] #, 0.086, 0.111]
+  version: v0.9.2
+  discountrate: [0.09] #, 0.086, 0.111]
   # [EUR/USD] ECB: https://www.ecb.europa.eu/stats/exchange/eurofxref/html/eurofxref-graph-usd.en.html # noqa: E501
   USD2013_to_EUR2013: 0.7532 # [EUR/USD] ECB: https://www.ecb.europa.eu/stats/exchange/eurofxref/html/eurofxref-graph-usd.en.html
   rooftop_share: 0.14 # based on the potentials, assuming  (0.1 kW/m2 and 10 m2/person)
