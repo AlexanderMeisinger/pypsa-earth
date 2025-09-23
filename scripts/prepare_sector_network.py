@@ -67,27 +67,28 @@ def add_carrier_buses(n, carrier, nodes=None):
 
     n.madd("Bus", nodes, location=location, carrier=carrier)
 
-    # initial fossil reserves
-    e_initial = (snakemake.params.fossil_reserves).get(carrier, 0) * 1e6
-    # capital cost could be corrected to e.g. 0.2 EUR/kWh * annuity and O&M
-    n.madd(
-        "Store",
-        nodes + " Store",
-        bus=nodes,
-        e_nom_extendable=True,
-        e_cyclic=True if e_initial == 0 else False,
-        carrier=carrier,
-        e_initial=e_initial,
-    )
+    if carrier != "biomass":
+        # initial fossil reserves
+        e_initial = (snakemake.params.fossil_reserves).get(carrier, 0) * 1e6
+        # capital cost could be corrected to e.g. 0.2 EUR/kWh * annuity and O&M
+        n.madd(
+            "Store",
+            nodes + " Store",
+            bus=nodes,
+            e_nom_extendable=True,
+            e_cyclic=True if e_initial == 0 else False,
+            carrier=carrier,
+            e_initial=e_initial,
+        )
 
-    n.madd(
-        "Generator",
-        nodes,
-        bus=nodes,
-        p_nom_extendable=True,
-        carrier=carrier,
-        marginal_cost=costs.at[carrier, "fuel"],
-    )
+        n.madd(
+            "Generator",
+            nodes,
+            bus=nodes,
+            p_nom_extendable=True,
+            carrier=carrier,
+            marginal_cost=costs.at[carrier, "fuel"],
+        )
 
 
 def add_generation(
@@ -710,11 +711,11 @@ def add_hydrogen(n, costs):
         h2_links = pd.read_csv(snakemake.input.pipelines)
 
         # Order buses to detect equal pairs for bidirectional pipelines
-        # buses_ordered = h2_links.apply(lambda p: sorted([p.bus0, p.bus1]), axis=1)
+        #buses_ordered = h2_links.apply(lambda p: sorted([p.bus0, p.bus1]), axis=1)
 
         # Appending string for carrier specification '_AC'
-        # h2_links["bus0"] = buses_ordered.str[0] + "_AC"
-        # h2_links["bus1"] = buses_ordered.str[1] + "_AC"
+        #h2_links["bus0"] = buses_ordered.str[0] + "_AC"
+        #h2_links["bus1"] = buses_ordered.str[1] + "_AC"
 
         # Create index column
         h2_links["buses_idx"] = (
