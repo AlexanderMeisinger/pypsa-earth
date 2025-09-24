@@ -2009,7 +2009,7 @@ def add_land_transport(
                 carrier="land transport fuel cell",
                 p_set=fuel_cell_share
                 / options["transport_fuel_cell_efficiency"]
-                * transport[nodes],
+                * transport[spatial.nodes],
             )
 
     if ice_share > 0:
@@ -3094,13 +3094,14 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "prepare_sector_network",
             simpl="",
-            clusters="4",
-            ll="c1",
-            opts="Co2L-4H",
-            planning_horizons="2030",
+            clusters="10",
+            ll="copt",
+            opts="Co2L-144H",
+            planning_horizons="2050",
             sopts="144H",
             discountrate=0.071,
-            demand="AB",
+            demand="NZ",
+            configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.NA.yaml"
         )
 
     # Load population layout
