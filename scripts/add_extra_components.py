@@ -328,6 +328,19 @@ if __name__ == "__main__":
         from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("add_extra_components", simpl="", clusters=10)
+        snakemake = mock_snakemake(
+            "add_extra_components",
+            simpl="",
+            clusters="2",
+            ll="copt",
+            opts="Co2L0.00-144H",
+            planning_horizons="2050",
+            discountrate="0.071",
+            demand="NZ",
+            sopts="144H",
+            h2export="50",
+            configfile="/home/alex-charly/SSD/Kenya/analyse-pypsa-kenya/config/config_KE_geo_pot.yaml",
+        )
 
     configure_logging(snakemake)
 
@@ -352,7 +365,7 @@ if __name__ == "__main__":
 
     add_nice_carrier_names(n, config=snakemake.config)
 
-    if config["extendable_carriers"]["geothermal_potential"]:
+    if config["electricity"]["estimate_renewable_capacities"]["geothermal_potential"]:
         attach_extendable_generators(n, costs, geothermal_pot)
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
