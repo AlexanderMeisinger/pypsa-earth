@@ -35,7 +35,7 @@ def parse_eopts(eopts_string):
     Parameters
     ----------
     eopts_string : str
-        String like "H2m1.0+NH3m1.0+FTm1.0+H2v1.0+NH3v1.0+FTv1.0" or subsets
+        String like "H2m1.0+NH3m1.0+H2v1.0+NH3v1.0" or subsets
 
     Returns
     -------
@@ -44,8 +44,8 @@ def parse_eopts(eopts_string):
 
     Examples
     --------
-    >>> parse_eopts("H2m1.0+NH3m1.0+FTm1.0+H2v1.0+NH3v1.0+FTv1.0")
-    ({'H2': 1.0, 'NH3': 1.0, 'FT': 1.0}, {'H2': 1.0, 'NH3': 1.0, 'FT': 1.0})
+    >>> parse_eopts("H2m1.0+NH3m1.0+H2v1.0+NH3v1.0")
+    ({'H2': 1.0, 'NH3': 1.0}, {'H2': 1.0, 'NH3': 1.0})
 
     >>> parse_eopts("H2+NH3+H2m1.5+NH3m2.0")
     ({'H2': 1.5, 'NH3': 2.0}, {'H2': 1.0, 'NH3': 1.0})
@@ -57,7 +57,7 @@ def parse_eopts(eopts_string):
     volume_factor = {}
 
     # Pattern to match carrier with optional marginal cost (m) or volume (v) factor
-    # Matches: H2m1.0, NH3v2.5, FT, etc.
+    # Matches: H2m1.0, NH3v2.5, etc.
     # Note: Only lowercase 'm' and 'v' are supported
     pattern = r"([A-Z0-9]+)([mv]?)([\d.]*)"
 
@@ -65,7 +65,7 @@ def parse_eopts(eopts_string):
 
     for carrier, factor_type, value in matches:
 
-        if carrier not in ["H2", "NH3", "FT", "MEOH", "HBI", "STEEL"]:
+        if carrier not in ["H2", "NH3", "MEOH"]:
             raise NotImplementedError(f"'{carrier}' is not yet implemented.")
 
         # Default factor is 1.0 if no value specified
@@ -200,11 +200,11 @@ def find_nodes_to_connect_to_export_bus(n, exp_carrier, nodes_with_port, ref_bus
     n : pypsa.Network
         The PyPSA network to search in
     exp_carrier : str
-        The export carrier type (e.g., 'H2', 'NH3', 'FT', 'MEOH')
+        The export carrier type (e.g., 'H2', 'NH3', 'MEOH')
     nodes_with_port : pd.Index
         Nodes with ports for regional search
     ref_bus_carrier : str, optional
-        Reference bus carrier for hydrocarbon exports (e.g., 'oil' for 'FT')
+        Reference bus carrier for hydrocarbon exports
         If None, uses exp_carrier directly
         
     Returns
@@ -240,7 +240,7 @@ def find_nodes_to_connect_to_export_bus(n, exp_carrier, nodes_with_port, ref_bus
         f"No buses found for {exp_carrier} export. "
         f"Searched for: {search_carrier} buses. "
         f"Ensure that the carrier is properly configured:"
-        f"e.g. ammonia, STEEL, methanol is set to true."
+        f"e.g. ammonia, methanol is set to true."
     )
     if ref_bus_carrier:
         error_msg += f" (Note: {exp_carrier} exports use {ref_bus_carrier} buses)"
@@ -257,14 +257,14 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
     4. Optional hydrogen storage for buffering export demand
     
     The function supports both direct export (H2, NH3) and carbon-neutral 
-    hydrocarbon export (FT, MEOH) with CO2 accounting.
+    hydrocarbon export (MEOH) with CO2 accounting.
     
     Parameters
     ----------
     n : pypsa.Network
         The PyPSA network to modify
     exp_carrier : str
-        Export carrier type. Supported: 'H2', 'NH3', 'FT'
+        Export carrier type. Supported: 'H2', 'NH3'
     volume : float
         Annual export volume in MWh. Can be np.inf for unlimited endogenous export
     price : float
@@ -282,7 +282,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
     -----
     
     For H2 and NH3, direct export links are created with 100% efficiency.
-    For FT and MEOH, links include CO2 accounting to ensure carbon neutrality,
+    For MEOH, links include CO2 accounting to ensure carbon neutrality,
     connecting to 'co2 atmosphere' bus with appropriate CO2 intensity factors.
     
     Export implementation depends on configuration:
@@ -327,18 +327,13 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
     )
 
     # add links for exports without co2 intensity
-    if exp_carrier in ["H2", "NH3", "HBI", "STEEL"]:
-
-        ref_bus_carrier = None if exp_carrier not in ["STEEL"] else "steel"
+    if exp_carrier in ["H2", "NH3"]:
 
         nodes_to_connect = find_nodes_to_connect_to_export_bus(
-            n, exp_carrier, nodes_with_port, ref_bus_carrier
-        )
+            n, exp_carrier, nodes_with_port)
         
         logger.info(f"Adding green export links from {nodes_to_connect} to central {exp_carrier} export bus, "
                     f"with price {price}")
-        
-        # TODO: decide if we want add liquefaction as a intermediate step. Easy to implement, but complicates result analysis.
         
         n.madd(
             "Link",
@@ -346,25 +341,23 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             bus0=nodes_to_connect,
             bus1=exp_carrier + " export",
             carrier=exp_carrier + " export",
-            p_nom=1e7, #volume * 0.01,  # TODO: check if setting p_nom to 1% of annual export volume is interesting
+            p_nom=1e7, 
             efficiency=1,
             marginal_cost=-price,
         )
 
-    # add links for FT and MEOH with accounting for CO2 intensity
-    elif exp_carrier in ["FT", "MEOH"]:
+    # add links for MEOH with accounting for CO2 intensity
+    elif exp_carrier in ["MEOH"]:
         # For the green hydrocarbon export, the reference bus carrier are oil, methanol or gas.
         # An extra constraints will be added in solve_network to ensure that the green liquid fuel conversion
         # technologies from hydrogen to X will be used ('>='). 
         # Feeding the co2 fraction of the exported products back to the co2 atmosphere of the system ensures, 
         # that the exports are green and carbon neutral on a system level.
         ref_bus_carrier = {
-            "FT": "oil",
             "MEOH": "methanol",
             }[exp_carrier]
 
         co2_i = {
-            "FT": ("oil", "CO2 intensity"),
             "MEOH": ("methanol", "CO2 intensity"),
         }
         co2_intensity = costs.at[co2_i[exp_carrier][0], co2_i[exp_carrier][1]]
@@ -383,7 +376,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             bus2="co2 atmosphere",
             carrier=exp_carrier + " export",
             p_nom_extendable=True,
-            p_nom=1e7, #volume * 0.01,  # TODO: check if setting p_nom to 1% of annual export volume is interesting
+            p_nom=1e7, 
             efficiency=1,
             efficiency2=co2_intensity,
             marginal_cost=-price,
@@ -406,7 +399,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             exp_carrier + " export",
             bus=exp_carrier + " export",
             carrier=exp_carrier + " export",
-            p_nom=1e7, #volume * 0.01,  # TODO: check if setting p_nom to 1% of annual export volume is interesting
+            p_nom=1e7, 
             p_max_pu=0, 
             p_min_pu=-1,
         )
@@ -529,12 +522,12 @@ if __name__ == "__main__":
             simpl="",
             clusters="4",
             ll="copt",
-            opts="Co2L0.27-3H",
+            opts="Co2L0.27-144H",
             planning_horizons="2050",
-            sopts="3H",
+            sopts="144H",
             discountrate=0.071,
             demand="NZ",
-            eopts="STEELm1.0+STEELv1.0",
+            eopts="MEOHv50",
             configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.MA_2050-new.yaml",
         )
 
@@ -584,8 +577,6 @@ if __name__ == "__main__":
         logger.info(f"Adding export for {export_carrier} with volume {export_volume} MWh "
                     f"and price {export_price} Currency/MWh")
 
-
-        
         add_export(n, export_carrier, export_volume, export_price, export_profile, nodes_with_port, costs, snakemake)
 
 
