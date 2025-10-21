@@ -481,7 +481,6 @@ policy_config:
     spatial_matching: false
     temporal_matching_carriers: [csp, solar, onwind, offwind-ac, offwind-dc, ror, hydro]
     matching_technologies: ["H2 Electrolysis", "Alkaline electrolyzer large", "Alkaline electrolyzer medium", "Alkaline electrolyzer small", "PEM electrolyzer", "SOEC"]
-    technology_matching_for_derivatives_and_export: false # Set to "true" to constraint the total H2 production from specific technologies for producing >= the total H2 consumed in NH3, FT and for direct H2 export. "false" ignores the option.
     additionality: false # RE electricity is equal to the amount required for additional hydrogen export compared to the 0 export case ("reference_case")
     allowed_excess: 1.0
     is_reference: false # Whether or not this network is a reference case network, relevant only if additionality is _true_
@@ -506,17 +505,11 @@ export:
   price: # market price at exit point (pre-trade) in Currency/MWh. Set to 0 for export target or marginal price analysis with endogenous: false
     H2: 0
     NH3: 0
-    FT: 0
     MEOH: 0
-    HBI: 0
-    STEEL: 0
   volume: # [0 to .inf TWh/a] max market potential volume, if endogenous is true; or export target if false
-    H2: 10
+    H2: 0
     NH3: 0
-    FT: 0
     MEOH: 0
-    HBI: 0
-    STEEL: 0  
   store: true # [True, False] # specifies whether an export store to balance demand is implemented
   store_capital_costs: "no_costs" # ["standard_costs", "no_costs"] # specifies the costs of the export store. "standard_costs" takes CAPEX of "hydrogen storage tank type 1 including compressor"
   export_profile: "ship" # use "ship" or "constant". Only considered, if ["export"]["endogenous"] is set to false
@@ -662,8 +655,7 @@ sector:
   biomass_transport_default_cost: 0.1 #EUR/km/MWh
   solid_biomass_potential: 40 # TWh/a, Potential of whole modelled area
   biogas_potential: 0.5 # TWh/a, Potential of whole modelled area
-  biomass_to_liquid: false
-  biomass_to_liquid_cc: false
+
   efficiency_heat_oil_to_elec: 0.9
   efficiency_heat_biomass_to_elec: 0.9
   efficiency_heat_gas_to_elec: 0.9
@@ -761,10 +753,6 @@ sector:
   methanation: true
   methanol: true
   ammonia: true
-  steel: # endogenous steel production, if not enabled, steel demand is still considered via the industrial demands as exogenous carrier loads
-    enable: true
-    relocation: true # if false, the model cannot choose to produce steel in any node
-    production_technologies: ["DRI","EAF"]
   helmeth: true
   dac: true
   cc_fraction: 0.9
