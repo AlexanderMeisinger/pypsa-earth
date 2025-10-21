@@ -2214,6 +2214,10 @@ def add_industry(
     )
 
     if options["methanol"]:
+        # Falls Spalte nicht existiert → anlegen mit 0
+        if "methanol" not in industrial_demand.columns:
+            industrial_demand["methanol"] = 0
+
         p_set = (
             industrial_demand.loc[spatial.methanol.demand_locations, "methanol"].rename(
                 index=lambda x: x + " industry methanol"
@@ -2349,6 +2353,10 @@ def add_industry(
         )
 
     if options["ammonia"]:
+        # Falls Spalte nicht existiert → anlegen mit 0
+        if "ammonia" not in industrial_demand.columns:
+            industrial_demand["ammonia"] = 0
+
         p_set = (
             industrial_demand.loc[spatial.ammonia.locations, "ammonia"].rename(
                 index=lambda x: x + " NH3"
@@ -2380,6 +2388,11 @@ def add_industry(
         sector = "steel"  # This should match industrial_demand column specifing final product volume in tSteel/a
         
         # industrial_demand[sector] = 1e6/15
+
+        # Falls Spalte nicht existiert → anlegen mit 0
+        if "steel" not in industrial_demand.columns:
+            industrial_demand["steel"] = 0
+        
 
         # Add steel and HBI buses
         n.add("Bus", "Earth steel", location="Earth", carrier="steel", unit="t")
@@ -3733,12 +3746,14 @@ if __name__ == "__main__":
             "prepare_sector_network",
             simpl="",
             clusters="4",
-            ll="c1",
-            opts="Co2L-4H",
-            planning_horizons="2030",
-            sopts="144H",
+            ll="copt",
+            opts="Co2L0.27-3H",
+            planning_horizons="2050",
+            sopts="3H",
             discountrate=0.071,
-            demand="AB",
+            demand="NZ",
+            eopts="STEELm1.0+STEELv1.0",
+            configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.MA_2050-new.yaml",
         )
 
     # Load population layout
