@@ -1702,35 +1702,37 @@ def add_shipping(n, costs, energy_totals, ports_fn):
         if "methanol" not in n.buses.carrier.unique():
             raise KeyError("Methanol buses are not defined in the network.")
 
-        # Add methanol shipping bus for regional demand
-        n.madd(
-            "Bus",
-            spatial.methanol.shipping,
-            location=spatial.methanol.demand_locations,
-            carrier="shipping methanol",
-            unit="MWh_LHV",
-        )
-        
         n.madd(
             "Load",
-            spatial.methanol.shipping,
-            bus=spatial.methanol.shipping,
+            spatial.nodes,
+            suffix= " shipping methanol",
+            bus=spatial.oil.nodes,
             carrier="shipping methanol",
             p_set=ports_methanol["p_set"],
         )
-        
-        # Link methanol production to shipping demand with CO2 emissions
-        n.madd(
-            "Link",
-            spatial.methanol.shipping,
-            bus0=spatial.methanol.nodes,
-            bus1=spatial.methanol.shipping,
-            bus2="co2 atmosphere",
-            carrier="shipping methanol",
-            p_nom_extendable=True,
-            efficiency=1.0,
-            efficiency2=costs.at["methanol", "CO2 intensity"] if "methanol" in costs.index else 0,
+
+        if snakemake.params.sector_options["international_bunkers"]:
+            co2 = ports_methanol["p_set"].sum() * costs.at["methanol", "CO2 intensity"]
+        else:
+            domestic_to_total = energy_totals["total domestic navigation"] / (
+                energy_totals["total domestic navigation"]
+                + energy_totals["total international navigation"]
+            )
+
+            co2 = (
+                ports_methanol["p_set"].sum()
+                * domestic_to_total
+                * costs.at["methanol", "CO2 intensity"]
+            ).sum()
+
+        n.add(
+            "Load",
+            "shipping methanol emissions",
+            bus="co2 atmosphere",
+            carrier="shipping methanol emissions",
+            p_set=-co2,
         )
+        
 
     # Add oil shipping loads
     if shipping_oil_share > 0:
