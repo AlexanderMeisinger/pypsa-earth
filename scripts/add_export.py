@@ -65,7 +65,7 @@ def parse_eopts(eopts_string):
 
     for carrier, factor_type, value in matches:
 
-        if carrier not in ["H2", "NH3", "MEOH"]:
+        if carrier not in ["H2", "LH2", "NH3", "MEOH"]:
             raise NotImplementedError(f"'{carrier}' is not yet implemented.")
 
         # Default factor is 1.0 if no value specified
@@ -240,7 +240,7 @@ def find_nodes_to_connect_to_export_bus(n, exp_carrier, nodes_with_port, ref_bus
         f"No buses found for {exp_carrier} export. "
         f"Searched for: {search_carrier} buses. "
         f"Ensure that the carrier is properly configured:"
-        f"e.g. ammonia, methanol is set to true."
+        f"e.g. ammonia, methanol, liquid h2 is set to true."
     )
     if ref_bus_carrier:
         error_msg += f" (Note: {exp_carrier} exports use {ref_bus_carrier} buses)"
@@ -256,7 +256,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
     3. Export demand (as load or negative generator) at the central bus
     4. Optional hydrogen storage for buffering export demand
     
-    The function supports both direct export (H2, NH3) and carbon-neutral 
+    The function supports both direct export (H2, LH2, NH3) and carbon-neutral 
     hydrocarbon export (MEOH) with CO2 accounting.
     
     Parameters
@@ -264,7 +264,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
     n : pypsa.Network
         The PyPSA network to modify
     exp_carrier : str
-        Export carrier type. Supported: 'H2', 'NH3'
+        Export carrier type. Supported: 'H2', 'LH2', 'NH3'
     volume : float
         Annual export volume in MWh. Can be np.inf for unlimited endogenous export
     price : float
@@ -281,7 +281,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
     Notes
     -----
     
-    For H2 and NH3, direct export links are created with 100% efficiency.
+    For H2, LH2 and NH3, direct export links are created with 100% efficiency.
     For MEOH, links include CO2 accounting to ensure carbon neutrality,
     connecting to 'co2 atmosphere' bus with appropriate CO2 intensity factors.
     
@@ -327,10 +327,15 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
     )
 
     # add links for exports without co2 intensity
-    if exp_carrier in ["H2", "NH3"]:
+    if exp_carrier in ["H2", "NH3", "LH2"]:
+        ref_bus_carrier = {
+                "H2": "H2",
+                "NH3": "NH3",
+                "LH2": "H2 liquefaction"
+                }[exp_carrier]
 
         nodes_to_connect = find_nodes_to_connect_to_export_bus(
-            n, exp_carrier, nodes_with_port)
+            n, exp_carrier, nodes_with_port, ref_bus_carrier)
         
         logger.info(f"Adding green export links from {nodes_to_connect} to central {exp_carrier} export bus, "
                     f"with price {price}")
@@ -520,15 +525,15 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "add_export",
             simpl="",
-            clusters="4",
-            ll="copt",
+            clusters="5",
+            ll="vopt",
             opts="Co2L0.27-144H",
             planning_horizons="2050",
             sopts="144H",
             discountrate=0.071,
             demand="NZ",
-            eopts="MEOHv50",
-            configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.MA_2050-new.yaml",
+            eopts="LH2v75",
+            configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.MA_2050.yaml",
         )
 
     overrides = override_component_attrs(snakemake.input.overrides)

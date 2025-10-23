@@ -903,6 +903,41 @@ def add_ammonia(n, costs):
     )
 
 
+def add_h2_liquid(n, costs):
+    n.add("Carrier", "H2 liquefaction")
+
+    n.madd(
+        "Bus",
+        spatial.lh2.nodes,
+        carrier="H2 liquefaction"
+        )
+
+    # link the H2 supply to liquified H2
+    n.madd(
+        "Link",
+        spatial.lh2.nodes,
+        bus0=spatial.h2.nodes,
+        bus1=spatial.lh2.nodes,
+        carrier="H2 liquefaction",
+        efficiency=costs.at["H2 liquefaction", "efficiency"],
+        capital_cost=costs.at["H2 liquefaction", "fixed"],
+        p_nom_extendable=True,
+        lifetime=costs.at["H2 liquefaction", "lifetime"],
+    )
+
+    # LH2 Storage
+    n.madd(
+        "Store",
+        spatial.lh2.nodes,
+        bus=spatial.lh2.nodes,
+        e_nom_extendable=True,
+        e_cyclic=True,
+        carrier="LH2 Store",
+        capital_cost=costs.at["H2 (l) storage tank", "fixed"],
+        lifetime=costs.at["H2 (l) storage tank", "lifetime"],
+    )
+
+
 def define_spatial(nodes, options):
     """
     Namespace for spatial.
@@ -1037,6 +1072,12 @@ def define_spatial(nodes, options):
     spatial.methanol.demand_locations = nodes
     spatial.methanol.industry = nodes + " industry methanol"
     spatial.methanol.shipping = nodes + " shipping methanol"
+
+    # lh2 
+    spatial.lh2 = SimpleNamespace()
+    spatial.lh2.nodes = nodes + " H2 liquefaction"
+    spatial.lh2.locations = nodes
+
 
     return spatial
 
@@ -3373,15 +3414,15 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "prepare_sector_network",
             simpl="",
-            clusters="4",
-            ll="copt",
-            opts="Co2L0.27-3H",
+            clusters="5",
+            ll="vopt",
+            opts="Co2L0.27-144H",
             planning_horizons="2050",
-            sopts="3H",
+            sopts="144H",
             discountrate=0.071,
             demand="NZ",
-            eopts="STEELm1.0+STEELv1.0",
-            configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.MA_2050-new.yaml",
+            eopts="LH2v75",
+            configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.MA_2050.yaml",
         )
 
     # Load population layout
@@ -3478,6 +3519,9 @@ if __name__ == "__main__":
 
     if options["ammonia"]:
         add_ammonia(n, costs)
+
+    if options["h2_liquid"]:
+        add_h2_liquid(n, costs)
 
     add_storage(n, costs)
 
