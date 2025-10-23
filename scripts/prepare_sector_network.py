@@ -63,64 +63,33 @@ def add_carrier_buses(n, carrier, nodes=None):
     if not isinstance(nodes, pd.Index):
         nodes = pd.Index(nodes)
 
-    n.add("Carrier", carrier)
+    n.add("Carrier", carrier, co2_emissions=costs.at[carrier, "CO2 intensity"])
 
-    unit = "MWh_LHV" if carrier == "gas" else "MWh_th"
-    # preliminary value for non-gas carriers to avoid zeros
-    if carrier == "gas":
-        capital_cost = costs.at["gas storage", "fixed"]
-    elif carrier == "oil":
-        # based on https://www.engineeringtoolbox.com/fuels-higher-calorific-values-d_169.html
-        mwh_per_m3 = 44.9 * 724 * 0.278 * 1e-3  # MJ/kg * kg/m3 * kWh/MJ * MWh/kWh
-        capital_cost = (
-            costs.at["General liquid hydrocarbon storage (product)", "fixed"]
-            / mwh_per_m3
-        )
-    elif carrier == "methanol":
-        # based on https://www.engineeringtoolbox.com/fossil-fuels-energy-content-d_1298.html
-        mwh_per_m3 = 5.54 * 791 * 1e-3  # kWh/kg * kg/m3 * MWh/kWh
-        capital_cost = (
-            costs.at["General liquid hydrocarbon storage (product)", "fixed"]
-            / mwh_per_m3
-        )
-    else:
-        capital_cost = 0.1
+    n.madd("Bus", nodes, location=location, carrier=carrier)
 
-    n.madd("Bus", nodes, location=location, carrier=carrier, unit=unit)
+    if carrier != "biomass":
+        # initial fossil reserves
+        e_initial = (snakemake.params.fossil_reserves).get(carrier, 0) * 1e6
+        # capital cost could be corrected to e.g. 0.2 EUR/kWh * annuity and O&M
+        n.madd(
+            "Store",
+            nodes + " Store",
+            bus=nodes,
+            e_nom_extendable=True,
+            e_cyclic=True if e_initial == 0 else False,
+            carrier=carrier,
+            e_initial=e_initial,
+            e_nom_max=e_initial,
+        )
 
     n.madd(
-        "Store",
-        nodes + " Store",
+        "Generator",
+        nodes,
         bus=nodes,
-        e_nom_extendable=True,
-        e_cyclic=True,
+        p_nom_extendable=True,
         carrier=carrier,
-        capital_cost=capital_cost,
+        marginal_cost=costs.at[carrier, "fuel"],
     )
-    
-    fossils = ["coal", "gas", "oil", "lignite"] # important to exclude methanol with marginal costs of 0
-    if carrier in fossils:
-        n.madd(
-            "Generator",
-            nodes,
-            bus=nodes,
-            p_nom_extendable=True,
-            carrier=carrier,
-            marginal_cost=costs.at[carrier, "fuel"],
-        )
-
-        # if fossil reserves for a primary fossil carrier are set, set a global constraint based on the value
-        fossil_limit = (snakemake.params.fossil_reserves).get(carrier, 0) * 1e6
-
-        if fossil_limit > 0:
-            logger.info(f"Adding limited fossil reserve of {fossil_limit*1e-6:.1f} TWh of {carrier} as a GlobalConstraint.")
-
-            n.add("GlobalConstraint",
-                f"{carrier}_max_generation_limit",
-                type="operational_limit",
-                carrier_attribute=carrier,
-                sense="<=",
-                constant=fossil_limit)
 
 
 def add_generation(
