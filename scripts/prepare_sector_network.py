@@ -845,7 +845,8 @@ def add_ammonia(n, costs):
     eff = 1 / costs.at["Haber-Bosch", "electricity-input"]
     n.madd(
         "Link",
-        spatial.nodes + " Haber-Bosch",
+        spatial.nodes,
+        suffix= " Haber-Bosch",
         bus0=spatial.nodes,
         bus1=spatial.ammonia.nodes,
         bus2=spatial.h2.nodes,
@@ -858,7 +859,7 @@ def add_ammonia(n, costs):
         capital_cost=costs.at["Haber-Bosch", "fixed"] * eff,
         marginal_cost=costs.at["Haber-Bosch", "VOM"] * eff,
     )
-    
+
     # Ammonia Storage
     n.madd(
         "Store",
@@ -869,6 +870,7 @@ def add_ammonia(n, costs):
         carrier="ammonia Store",
         capital_cost=costs.at["NH3 (l) storage tank incl. liquefaction", "fixed"],
         lifetime=costs.at["NH3 (l) storage tank incl. liquefaction", "lifetime"],
+        e_initial=0
     )
 
 
@@ -1026,7 +1028,7 @@ def define_spatial(nodes, options):
     # nitrogen and ammonia
 
     spatial.nitrogen = SimpleNamespace()
-    spatial.nitrogen.nodes = ["N2"]
+    spatial.nitrogen.nodes = nodes + " N2"
     
     spatial.ammonia = SimpleNamespace()
     spatial.ammonia.nodes = nodes + " NH3"
@@ -1675,7 +1677,7 @@ def add_shipping(n, costs, energy_totals, ports_fn):
             "Load",
             spatial.nodes,
             suffix= " shipping methanol",
-            bus=spatial.oil.nodes,
+            bus=spatial.methanol.nodes,
             carrier="shipping methanol",
             p_set=ports_methanol["p_set"],
         )
