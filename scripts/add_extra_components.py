@@ -357,7 +357,7 @@ if __name__ == "__main__":
         Nyears,
     )
 
-    geothermal_pot = pd.read_csv('/home/alex-charly/SSD/Kenya/pypsa-earth/data/custom/KE_geothermal_potential_ac.csv', index_col=["name"]).sort_index()
+    geothermal_pot = pd.read_csv('/home/alex-charly/SSD/Kenya/analyse-pypsa-kenya/workflow/notebooks/Geothermal-Potential-Great-Rift-Valley/geothermal_potential_ac_10GW.csv', index_col=["name"]).sort_index()
 
     attach_storageunits(n, costs, config)
     attach_stores(n, costs, config)
