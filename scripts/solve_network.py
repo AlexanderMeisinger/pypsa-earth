@@ -491,6 +491,52 @@ def add_RES_constraints(n, res_share, config):
         "is subject to future improvements."
     )
 
+    # ToDo: Überlegung, nuclear, geothermal
+    # Determine the label of technologies based on config file
+    all_techs = config["electricity"]["all_carriers"] # All generators
+    ren_gen_all = n.generators.query("carrier in @all_techs")
+
+    re_share_techs = config["electricity"]["re_share_carriers"] # RE share generators
+    ren_gen_re_share = n.generators.query("carrier in @re_share_techs")
+
+    # Identify generator indices
+    gens_all_i = ren_gen_all.index
+    gens_re_share_i = ren_gen_re_share.index
+
+    # Map each generator to its country, enabling grouped aggregation
+    ggrouper_all = ren_gen_all.bus.map(n.buses.country)
+    ggrouper_re_share = ren_gen_re_share.bus.map(n.buses.country)
+
+    # Define constraint for all electricity generation
+    lhs_gen_all = (
+        (n.model["Generator-p"].loc[:, gens_all_i] * n.snapshot_weightings.generators)
+        .groupby(ggrouper_all.to_xarray())
+        .sum()
+    )
+
+    # Define constraint for re share electricity generation
+    lhs_gen_re_share = (
+        (n.model["Generator-p"].loc[:, gens_re_share_i] * n.snapshot_weightings.generators)
+        .groupby(ggrouper_re_share.to_xarray())
+        .sum()
+    )
+
+    #ToDo: überlegung: Solar Rooftop
+    #solar_rooftop_techs = config["sector"]["solar_rooftop"]
+    #if solar_rooftop_techs:
+
+    #Todo: übelegung wegen links
+
+    # Define constraint for re_shareable electricity share
+    lhs = lhs_gen_re_share
+    rhs = res_share * (lhs_gen_all)
+    
+
+    #ToDo: Überlegung: == or >= or <=
+    n.model.add_constraints(lhs == rhs, name="res_share")
+
+
+    """
     # Determine the label of technologies based on config file
     conv_techs = config["electricity"]["conventional_carriers"] # Conventional generators
     ren_gen_conv = n.generators.query("carrier in @conv_techs")
@@ -532,7 +578,8 @@ def add_RES_constraints(n, res_share, config):
     lhs = lhs_gen_re_share
     rhs = res_share * rhs_gen_all
     
-    n.model.add_constraints(lhs >= rhs, name="res_share")
+    n.model.add_constraints(lhs == rhs, name="res_share")
+    """
 
 
 def add_land_use_constraint(n):
@@ -1079,23 +1126,9 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "solve_sector_network",
             simpl="",
-            clusters="4",
-            ll="c1",
-            opts="Co2L-4H",
-            planning_horizons="2030",
-            discountrate="0.071",
-            demand="AB",
-            sopts="144H",
-            h2export="120",
-            configfile="config.tutorial.yaml",
-        )
-
-        snakemake = mock_snakemake(
-            "solve_sector_network",
-            simpl="",
             clusters="2",
             ll="copt",
-            opts="Co2L1.00-144H-RES1.0",
+            opts="Co2L1.00-144H-RES0.75",
             planning_horizons="2050",
             discountrate="0.071",
             demand="NZ",
