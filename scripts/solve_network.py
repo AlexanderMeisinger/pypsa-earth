@@ -529,8 +529,6 @@ def add_RES_constraints(n, res_share, config):
     lhs = lhs_gen_renew
     rhs = res_share * (lhs_gen_conv + lhs_gen_renew)
     
-
-    #ToDo: Überlegung: == or >= or <=
     n.model.add_constraints(lhs >= rhs, name="res_share")
 
 
