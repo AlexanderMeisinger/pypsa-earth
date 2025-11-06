@@ -491,7 +491,6 @@ def add_RES_constraints(n, res_share, config):
         "is subject to future improvements."
     )
 
-    # ToDo: Überlegung, nuclear, geothermal
     # Determine the label of technologies based on config file
     conv_techs = config["electricity"]["conventional_carriers"] # Conventional generators
     ren_gen_conv = n.generators.query("carrier in @conv_techs")
@@ -499,35 +498,39 @@ def add_RES_constraints(n, res_share, config):
     renew_techs = config["electricity"]["renewable_carriers"] # Renewable generators
     ren_gen_renew = n.generators.query("carrier in @renew_techs")
 
+    re_share_techs = config["electricity"]["re_share_carriers"] # RE share generators
+    ren_gen_re_share = n.generators.query("carrier in @re_share_techs")
+
+    ren_gen_all = (
+        pd.concat([ren_gen_conv, ren_gen_renew, ren_gen_re_share])
+        .loc[lambda df: ~df.index.duplicated()]    # keep first occurrence of each generator
+        )    
+
     # Identify generator indices
-    gens_conv_i = ren_gen_conv.index
-    gens_renew_i = ren_gen_renew.index
+    gens_all_i = ren_gen_all.index
+    gens_re_share_i = ren_gen_re_share.index
 
     # Map each generator to its country, enabling grouped aggregation
-    ggrouper_conv = ren_gen_conv.bus.map(n.buses.country)
-    ggrouper_renew = ren_gen_renew.bus.map(n.buses.country)
+    ggrouper_all = ren_gen_all.bus.map(n.buses.country)
+    ggrouper_re_share = ren_gen_re_share.bus.map(n.buses.country)
 
-    # Define constraint for conventional electricity generation
-    lhs_gen_conv = (
-        (n.model["Generator-p"].loc[:, gens_conv_i] * n.snapshot_weightings.generators)
-        .groupby(ggrouper_conv.to_xarray())
+    # Define constraint for renewable electricity generation share
+    lhs_gen_re_share = (
+        (n.model["Generator-p"].loc[:, gens_re_share_i] * n.snapshot_weightings.generators)
+        .groupby(ggrouper_re_share.to_xarray())
         .sum()
     )
 
-    # Define constraint for renewable electricity generation
-    lhs_gen_renew = (
-        (n.model["Generator-p"].loc[:, gens_renew_i] * n.snapshot_weightings.generators)
-        .groupby(ggrouper_renew.to_xarray())
+    # Define constraint for all electricity generation
+    rhs_gen_all = (
+        (n.model["Generator-p"].loc[:, gens_all_i] * n.snapshot_weightings.generators)
+        .groupby(ggrouper_all.to_xarray())
         .sum()
     )
-
-    #ToDo: überlegung: Solar Rooftop
-    #solar_rooftop_techs = config["sector"]["solar_rooftop"]
-    #if solar_rooftop_techs:
 
     # Define constraint for renewable electricity share
-    lhs = lhs_gen_renew
-    rhs = res_share * (lhs_gen_conv + lhs_gen_renew)
+    lhs = lhs_gen_re_share
+    rhs = res_share * rhs_gen_all
     
     n.model.add_constraints(lhs >= rhs, name="res_share")
 
