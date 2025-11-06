@@ -491,67 +491,47 @@ def add_RES_constraints(n, res_share, config):
         "is subject to future improvements."
     )
 
-    renew_techs = config["electricity"]["renewable_carriers"]
+    # ToDo: Überlegung, nuclear, geothermal
+    # Determine the label of technologies based on config file
+    conv_techs = config["electricity"]["conventional_carriers"] # Conventional generators
+    ren_gen_conv = n.generators.query("carrier in @conv_techs")
 
-    charger = ["H2 electrolysis", "battery charger"]
-    discharger = ["H2 fuel cell", "battery discharger"]
+    renew_techs = config["electricity"]["renewable_carriers"] # Renewable generators
+    ren_gen_renew = n.generators.query("carrier in @renew_techs")
 
-    ren_gen = n.generators.query("carrier in @renew_techs")
-    ren_stores = n.storage_units.query("carrier in @renew_techs")
-    ren_charger = n.links.query("carrier in @charger")
-    ren_discharger = n.links.query("carrier in @discharger")
+    # Identify generator indices
+    gens_conv_i = ren_gen_conv.index
+    gens_renew_i = ren_gen_renew.index
 
-    gens_i = ren_gen.index
-    stores_i = ren_stores.index
-    charger_i = ren_charger.index
-    discharger_i = ren_discharger.index
+    # Map each generator to its country, enabling grouped aggregation
+    ggrouper_conv = ren_gen_conv.bus.map(n.buses.country)
+    ggrouper_renew = ren_gen_renew.bus.map(n.buses.country)
 
-    stores_t_weights = n.snapshot_weightings.stores
-
-    lgrouper = n.loads.bus.map(n.buses.country)
-    ggrouper = ren_gen.bus.map(n.buses.country)
-    sgrouper = ren_stores.bus.map(n.buses.country)
-    cgrouper = ren_charger.bus0.map(n.buses.country)
-    dgrouper = ren_discharger.bus0.map(n.buses.country)
-
-    load = (
-        n.snapshot_weightings.generators
-        @ n.loads_t.p_set.groupby(lgrouper, axis=1).sum()
-    )
-    rhs = res_share * load
-
-    # Generators
-    lhs_gen = (
-        (n.model["Generator-p"].loc[:, gens_i] * n.snapshot_weightings.generators)
-        .groupby(ggrouper.to_xarray())
+    # Define constraint for conventional electricity generation
+    lhs_gen_conv = (
+        (n.model["Generator-p"].loc[:, gens_conv_i] * n.snapshot_weightings.generators)
+        .groupby(ggrouper_conv.to_xarray())
         .sum()
     )
 
-    # StorageUnits
-    store_disp_expr = (
-        n.model["StorageUnit-p_dispatch"].loc[:, stores_i] * stores_t_weights
-    )
-    store_expr = n.model["StorageUnit-p_store"].loc[:, stores_i] * stores_t_weights
-    charge_expr = n.model["Link-p"].loc[:, charger_i] * stores_t_weights.apply(
-        lambda r: r * n.links.loc[charger_i].efficiency
-    )
-    discharge_expr = n.model["Link-p"].loc[:, discharger_i] * stores_t_weights.apply(
-        lambda r: r * n.links.loc[discharger_i].efficiency
+    # Define constraint for renewable electricity generation
+    lhs_gen_renew = (
+        (n.model["Generator-p"].loc[:, gens_renew_i] * n.snapshot_weightings.generators)
+        .groupby(ggrouper_renew.to_xarray())
+        .sum()
     )
 
-    lhs_dispatch = store_disp_expr.groupby(sgrouper).sum()
-    lhs_store = store_expr.groupby(sgrouper).sum()
+    #ToDo: überlegung: Solar Rooftop
+    #solar_rooftop_techs = config["sector"]["solar_rooftop"]
+    #if solar_rooftop_techs:
 
-    # Stores (or their resp. Link components)
-    # Note that the variables "p0" and "p1" currently do not exist.
-    # Thus, p0 and p1 must be derived from "p" (which exists), taking into account the link efficiency.
-    lhs_charge = charge_expr.groupby(cgrouper).sum()
+    # Define constraint for renewable electricity share
+    lhs = lhs_gen_renew
+    rhs = res_share * (lhs_gen_conv + lhs_gen_renew)
+    
 
-    lhs_discharge = discharge_expr.groupby(cgrouper).sum()
-
-    lhs = lhs_gen + lhs_dispatch - lhs_store - lhs_charge + lhs_discharge
-
-    n.model.add_constraints(lhs == rhs, name="res_share")
+    #ToDo: Überlegung: == or >= or <=
+    n.model.add_constraints(lhs >= rhs, name="res_share")
 
 
 def add_land_use_constraint(n):
@@ -1107,6 +1087,20 @@ if __name__ == "__main__":
             sopts="144H",
             h2export="120",
             configfile="config.tutorial.yaml",
+        )
+
+        snakemake = mock_snakemake(
+            "solve_sector_network",
+            simpl="",
+            clusters="2",
+            ll="copt",
+            opts="Co2L1.00-144H-RES1.0",
+            planning_horizons="2050",
+            discountrate="0.071",
+            demand="NZ",
+            sopts="144H",
+            h2export="50",
+            configfile="/home/alex-charly/SSD/Kenya/analyse-pypsa-kenya/config/config_KE_geo_pot_RES.yaml",
         )
 
     configure_logging(snakemake)
