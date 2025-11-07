@@ -493,19 +493,33 @@ def add_RES_constraints(n, res_share, config):
 
     # ToDo: Überlegung, nuclear, geothermal
     # Determine the label of technologies based on config file
-    all_techs = config["electricity"]["all_carriers"] # All generators
-    ren_gen_all = n.generators.query("carrier in @all_techs")
+    re_share_techs = ["solar", "onwind", "offwind-ac", "offwind-dc", "hydro", "geothermal", "ror"] # biomass, # solar rooftop
+    all_techs = ["OCGT", "CCGT", "solar", "onwind", "offwind-ac", "offwind-dc", "hydro", "geothermal", "ror" "nuclear", "oil"] #, "nulcear", "oil", "coal", "lignite"] # biomass, # solar rooftop, 
 
-    re_share_techs = config["electricity"]["re_share_carriers"] # RE share generators
-    ren_gen_re_share = n.generators.query("carrier in @re_share_techs")
+    # 1) add ror
+    # 2) generators - add bus ends with AC
+    # 3) Adapt bus by link
+
+    #all_techs = config["electricity"]["all_carriers"] # All generators
+    ren_gen_all = n.generators.query("carrier in @all_techs and bus.str.endswith('AC')")
+    ren_link_all = n.links.query("carrier in @all_techs and bus1.str.endswith('AC')")                                 
+
+    #re_share_techs = config["electricity"]["re_share_carriers"] # RE share generators
+    ren_gen_re_share = n.generators.query("carrier in @re_share_techs and bus.str.endswith('AC')")
+    ren_link_re_share = n.links.query("carrier in @re_share_techs and bus1.str.endswith('AC')")                                 
+
 
     # Identify generator indices
     gens_all_i = ren_gen_all.index
+    links_all_i = ren_link_all.index
     gens_re_share_i = ren_gen_re_share.index
+    links_re_share_i = ren_link_re_share.index
 
     # Map each generator to its country, enabling grouped aggregation
     ggrouper_all = ren_gen_all.bus.map(n.buses.country)
+    lgrouper_all = ren_link_all.bus1.map(n.buses.country)
     ggrouper_re_share = ren_gen_re_share.bus.map(n.buses.country)
+    lgrouper_re_share = ren_link_re_share.bus1.map(n.buses.country)
 
     # Define constraint for all electricity generation
     lhs_gen_all = (
@@ -514,12 +528,30 @@ def add_RES_constraints(n, res_share, config):
         .sum()
     )
 
+    # double check Link-p1
+    #lhs_link_all = (
+    #    (n.model["Link-p"].loc[:, links_all_i] * n.snapshot_weightings.generators)
+    #    .groupby(lgrouper_all.to_xarray())
+    #    .sum()
+    #)
+
     # Define constraint for re share electricity generation
     lhs_gen_re_share = (
         (n.model["Generator-p"].loc[:, gens_re_share_i] * n.snapshot_weightings.generators)
         .groupby(ggrouper_re_share.to_xarray())
         .sum()
     )
+
+    # double check Link-p1
+    #if not n.model["Link-p"].loc[:, links_re_share_i].size > 0:
+    #    lhs_link_re_share = (
+    #        (n.model["Link-p"].loc[:, links_re_share_i] * n.snapshot_weightings.generators)
+    #        .groupby(lgrouper_re_share.to_xarray())
+    #        .sum()
+    #    )
+    #else: 
+    #    lhs_link_re_share = xr.DataArray()
+
 
     #ToDo: überlegung: Solar Rooftop
     #solar_rooftop_techs = config["sector"]["solar_rooftop"]
@@ -528,8 +560,8 @@ def add_RES_constraints(n, res_share, config):
     #Todo: übelegung wegen links
 
     # Define constraint for re_shareable electricity share
-    lhs = lhs_gen_re_share
-    rhs = res_share * (lhs_gen_all)
+    lhs = lhs_gen_re_share #+ lhs_link_re_share
+    rhs = res_share * (lhs_gen_all) # + lhs_link_all)
     
 
     #ToDo: Überlegung: == or >= or <=
