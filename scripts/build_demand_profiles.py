@@ -309,7 +309,19 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_demand_profiles")
+        snakemake = mock_snakemake(
+            "build_demand_profiles",
+            simpl="",
+            clusters="2",
+            ll="copt",
+            opts="Co2L1.00-144H-RES0.75",
+            planning_horizons="2050",
+            discountrate="0.071",
+            demand="NZ",
+            sopts="144H",
+            h2export="50",
+            configfile="/home/alex-charly/SSD/Kenya/analyse-pypsa-kenya/config/config_KE_geo_pot_RES.yaml",
+        )
 
     configure_logging(snakemake)
 
