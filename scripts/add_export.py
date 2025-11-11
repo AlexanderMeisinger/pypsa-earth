@@ -351,9 +351,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             "Bus",
             nodes_to_connect + " load ship export",
             carrier=exp_carrier + " export",
-            location="Earth",
-            x=x_export,
-            y=y_export,
+            location=nodes_to_connect
         )
 
         # add export link for ship loading
@@ -379,9 +377,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             "Bus",
             nodes_to_connect + " transport ship export",
             carrier=exp_carrier + " export",
-            location="Earth",
-            x=x_export,
-            y=y_export,
+            location=nodes_to_connect
         )
 
         # add export link for ship transport
@@ -407,9 +403,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             "Bus",
             nodes_to_connect + " unload ship export",
             carrier=exp_carrier + " export",
-            location="Earth",
-            x=x_export,
-            y=y_export,
+            location=nodes_to_connect
         )
 
         # add export link for ship unloading
