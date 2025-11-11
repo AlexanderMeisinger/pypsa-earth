@@ -340,16 +340,100 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         logger.info(f"Adding green export links from {nodes_to_connect} to central {exp_carrier} export bus, "
                     f"with price {price}")
         
+        efficiency_load_ship = {
+            "H2": 0.9,
+            "NH3": 0.8,
+            "LH2": 0.7
+        }
+
+        # add one central export bus
+        n.add(
+            "Bus",
+            exp_carrier + " load ship export",
+            carrier=exp_carrier + " load ship export",
+            location="Earth",
+            x=x_export,
+            y=y_export,
+        )
+
+        n.madd(
+            "Link",
+            nodes_to_connect + " load ship export",
+            bus0=nodes_to_connect,
+            bus1=exp_carrier + " load ship export",
+            carrier=exp_carrier + " load ship export",
+            p_nom=1e7, 
+            efficiency=efficiency_load_ship[export_carrier],
+            #marginal_cost=-price,
+        )
+
+        efficiency_transport_ship = {
+            "H2": 0.9,
+            "NH3": 0.8,
+            "LH2": 0.7
+        }
+
+        # add one central export bus
+        n.add(
+            "Bus",
+            exp_carrier + " transport ship export",
+            carrier=exp_carrier + " transport ship export",
+            location="Earth",
+            x=x_export,
+            y=y_export,
+        )
+
+        n.madd(
+            "Link",
+            nodes_to_connect + " transport ship export",
+            bus0=exp_carrier + " load ship export",
+            bus1=exp_carrier + " transport ship export",
+            carrier=exp_carrier + " transport ship export",
+            p_nom=1e7, 
+            efficiency=efficiency_transport_ship[export_carrier],
+            #marginal_cost=-price,
+        )
+
+        efficiency_unload_ship = {
+            "H2": 0.9,
+            "NH3": 0.8,
+            "LH2": 0.7
+        }
+
+        # add one central export bus
+        n.add(
+            "Bus",
+            exp_carrier + " unload ship export",
+            carrier=exp_carrier + " unload ship export",
+            location="Earth",
+            x=x_export,
+            y=y_export,
+        )
+
+        n.madd(
+            "Link",
+            nodes_to_connect + " unload ship export",
+            bus0=exp_carrier + " transport ship export",
+            bus1=exp_carrier + " unload ship export",
+            carrier=exp_carrier + " unload ship export",
+            p_nom=1e7, 
+            efficiency=efficiency_unload_ship[export_carrier],
+            #marginal_cost=-price,
+        )
+        
+        
         n.madd(
             "Link",
             nodes_to_connect + " export",
-            bus0=nodes_to_connect,
+            bus0=exp_carrier + " unload ship export",
             bus1=exp_carrier + " export",
             carrier=exp_carrier + " export",
             p_nom=1e7, 
             efficiency=1,
             marginal_cost=-price,
         )
+
+
 
     # add links for MEOH with accounting for CO2 intensity
     elif exp_carrier in ["MEOH"]:
@@ -373,6 +457,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         
         logger.info(f"Adding green export links from {nodes_to_connect} to central {exp_carrier} export bus, "
                     f"with price {price} and CO2 intensity {co2_intensity}")
+        
         n.madd(
             "Link",
             nodes_to_connect + " export",
@@ -386,6 +471,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             efficiency2=co2_intensity,
             marginal_cost=-price,
         )
+
     else:
         raise NotImplementedError(f"Export carrier {exp_carrier} not implemented")
 
@@ -532,7 +618,7 @@ if __name__ == "__main__":
             sopts="144H",
             discountrate=0.071,
             demand="NZ",
-            eopts="LH2v75",
+            eopts="NH3v75",
             configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.MA_2050.yaml",
         )
 
