@@ -346,22 +346,23 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             "LH2": 0.7
         }
 
-        # add one central export bus
-        n.add(
+        # add export bus for ship loading
+        n.madd(
             "Bus",
-            exp_carrier + " load ship export",
-            carrier=exp_carrier + " load ship export",
+            nodes_to_connect + " load ship export",
+            carrier=exp_carrier + " export",
             location="Earth",
             x=x_export,
             y=y_export,
         )
 
+        # add export link for ship loading
         n.madd(
             "Link",
             nodes_to_connect + " load ship export",
             bus0=nodes_to_connect,
-            bus1=exp_carrier + " load ship export",
-            carrier=exp_carrier + " load ship export",
+            bus1=nodes_to_connect + " load ship export",
+            carrier=exp_carrier + " export",
             p_nom=1e7, 
             efficiency=efficiency_load_ship[export_carrier],
             #marginal_cost=-price,
@@ -373,22 +374,23 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             "LH2": 0.7
         }
 
-        # add one central export bus
-        n.add(
+        # add export bus for ship transport
+        n.madd(
             "Bus",
-            exp_carrier + " transport ship export",
-            carrier=exp_carrier + " transport ship export",
+            nodes_to_connect + " transport ship export",
+            carrier=exp_carrier + " export",
             location="Earth",
             x=x_export,
             y=y_export,
         )
 
+        # add export link for ship transport
         n.madd(
             "Link",
             nodes_to_connect + " transport ship export",
-            bus0=exp_carrier + " load ship export",
-            bus1=exp_carrier + " transport ship export",
-            carrier=exp_carrier + " transport ship export",
+            bus0=nodes_to_connect + " load ship export",
+            bus1=nodes_to_connect + " transport ship export",
+            carrier=exp_carrier + " export",
             p_nom=1e7, 
             efficiency=efficiency_transport_ship[export_carrier],
             #marginal_cost=-price,
@@ -400,22 +402,23 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             "LH2": 0.7
         }
 
-        # add one central export bus
-        n.add(
+        # add export bus for ship unloading
+        n.madd(
             "Bus",
-            exp_carrier + " unload ship export",
-            carrier=exp_carrier + " unload ship export",
+            nodes_to_connect + " unload ship export",
+            carrier=exp_carrier + " export",
             location="Earth",
             x=x_export,
             y=y_export,
         )
 
+        # add export link for ship unloading
         n.madd(
             "Link",
             nodes_to_connect + " unload ship export",
-            bus0=exp_carrier + " transport ship export",
-            bus1=exp_carrier + " unload ship export",
-            carrier=exp_carrier + " unload ship export",
+            bus0=nodes_to_connect + " transport ship export",
+            bus1=nodes_to_connect + " unload ship export",
+            carrier=exp_carrier + " export",
             p_nom=1e7, 
             efficiency=efficiency_unload_ship[export_carrier],
             #marginal_cost=-price,
@@ -425,7 +428,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         n.madd(
             "Link",
             nodes_to_connect + " export",
-            bus0=exp_carrier + " unload ship export",
+            bus0=nodes_to_connect + " unload ship export",
             bus1=exp_carrier + " export",
             carrier=exp_carrier + " export",
             p_nom=1e7, 
