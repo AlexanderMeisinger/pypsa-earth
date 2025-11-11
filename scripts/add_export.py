@@ -341,9 +341,9 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
                     f"with price {price}")
         
         efficiency_load_ship = {
-            "H2": 0.9,
-            "NH3": 0.8,
-            "LH2": 0.7
+            "H2": 1,
+            "NH3": 1-0, # 10.1109/EEM64765.2025.11050281, page 8
+            "LH2": 1-0.02 # 10.1109/EEM64765.2025.11050281, page 8
         }
 
         # add export bus for ship loading
@@ -393,9 +393,9 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         )
 
         efficiency_unload_ship = {
-            "H2": 0.9,
-            "NH3": 0.8,
-            "LH2": 0.7
+            "H2": 1,
+            "NH3": 1-0, # 10.1109/EEM64765.2025.11050281, page 8
+            "LH2": 1-0.02 # 10.1109/EEM64765.2025.11050281, page 8
         }
 
         # add export bus for ship unloading
