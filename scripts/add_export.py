@@ -433,18 +433,6 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         )
 
         # add export load for ship transport fuel
-        n.madd(
-                "Load",
-                nodes_to_connect + " transport fuel ship export",
-                bus0=nodes_to_connect + " load ship export",
-                bus1=nodes_to_connect + " transport amount ship export",
-                carrier=exp_carrier + " export",
-                p_nom=1e7, 
-                efficiency=energy_demand_transport_ship[export_carrier], # ToDo: Adapt efficiency, not energy demand
-                #marginal_cost=-price,
-            )
-        
-
         # Who will be accounted for the emisisons of shipping? all or none? 
         # => For now, export country
         # Add warining, if bus does not exits
@@ -466,7 +454,8 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         # Double check fuel_export
         # Thinking about ship capacity
         # Add consider boil-off within energy demand for shipping
-        if fuel_export == ["LH2", "NH3", "MeOH"]:
+        # Fuel export profil is constant at the moment
+        if fuel_export == ["LH2", "NH3"]:
             ports_fuel_export_profil = pd.DataFrame((((energy_demand_transport_ship[fuel_export] * ports_fuel_export.distance * 1e6))) / 8760).T # Double check conversion
             fuel_nodes_to_connect = nodes_to_connect
         elif fuel_export == "oil": 
@@ -477,14 +466,16 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
                 print(f"Warning: None of the {fuel_export} buses exist!")
 
         snapshots = pd.date_range(freq="h", **snakemake.params.snapshots)
-        #ports_fuel_export_profil = pd.DataFrame(ports_fuel_export_profil.value, index=snapshots, columns=ports_fuel_export.index)
+
+        ports_fuel_export_profil = ports_fuel_export_profil.squeeze()          # macht aus 1xN DataFrame eine Series (Index = Spaltennamen)
 
         ports_fuel_export_profil = pd.DataFrame(
-            np.repeat(ports_fuel_export_profil.values, len(snapshots), axis=0),
-            index=snapshots,
-            columns=ports_fuel_export_profil.columns)
-        
+            [ports_fuel_export_profil] * len(snapshots),                      # wiederholt automatisch pro Snapshot
+            index=snapshots                                  # setzt Zeitstempel als Index
+        ).astype(float)                                      # erzwingt Float-Datentyp
+
         # Annahme, dass das Schiff hin- und zurückfährt
+        # Somit doppelte Distanz oder?
         n.madd(
             "Load",
             fuel_nodes_to_connect + " transport fuel ship export",
@@ -492,7 +483,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             carrier=fuel_export + " transport fuel ship export", 
             p_set=ports_fuel_export_profil,
         )
-        
+
         # What if the ship does not drive? Or multiple ships drive?
         # Add global constraint?
         if fuel_export == ["oil"]: # MeOH, NH3, LNG? 
@@ -508,8 +499,6 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
                 carrier=f"export shipping {fuel_export} emissions",
                 p_set=-co2,
             )
-
-        
 
         # add export bus for ship unloading
         n.madd(
@@ -728,7 +717,7 @@ if __name__ == "__main__":
             sopts="144H",
             discountrate=0.071,
             demand="NZ",
-            eopts="H2v75",
+            eopts="NH3v75",
             configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.MA_2050.yaml",
         )
 
