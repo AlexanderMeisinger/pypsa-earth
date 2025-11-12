@@ -341,44 +341,36 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         logger.info(f"Adding green export links from {nodes_to_connect} to central {exp_carrier} export bus, "
                     f"with price {price}")
         
-        # ToDo: Read parameters via csv
-        # Dummy
-        efficiency_load_ship = {
-            "H2": 1,
-            "NH3": 1-0, # 10.1109/EEM64765.2025.11050281, page 8
-            "LH2": 1-0.02 # 10.1109/EEM64765.2025.11050281, page 8
-        }
-
-        # Dummy
-        boil_off_transport_ship = {
-            "H2": 0.5, # %/h
-            "NH3": 0.6, # %/h
-            "LH2": 0.7 # %/h
-        }
-
-        # Dummy
-        # Kommt bei LH2 auch noch ein Boil-Off hinzu?
-        energy_demand_transport_ship = {
-            "H2": 0.48, # MWh/km
-            "NH3": 0.58, # MWh/km
-            "LH2": 0.68, # MWh/km
-            "oil": 0.68, # MWh/km
-        }
-
-        destination = [4.4777, 51.9244] # Rotterdam
 
         fuel_export = "oil" # "export_carrier" # Mabe add lng
         #fuel_export = export_carrier
 
-        # ToDo: Add more parameters for different ships via csv
-        travel_time = 100 #h # Improve: Travel time dependend on distance
-
-        efficiency_unload_ship = {
-            "H2": 1,
-            "NH3": 1-0, # 10.1109/EEM64765.2025.11050281, page 8
-            "LH2": 1-0.02 # 10.1109/EEM64765.2025.11050281, page 8
+        # ToDo: Read parameters via csv
+        # ToDo: connect to snakemake
+        # Kommt bei LH2 auch noch ein Boil-Off hinzu?
+        # Source: 10.1109/EEM64765.2025.11050281
+        shipping_data = pd.read_csv("/home/alex-charly/SSD/H2GMA/Github/AP10/pypsa-earth/Morocco/pypsa-earth/data/shipping.csv", index_col=0)
+        shipping_index = {
+            "LH2": "H2 (l)",
+            "NH3": "NH3 (l)",
+            "MeOH": "MeOH",
+            "oil": "FT"
         }
 
+        shipping_data_transport = shipping_data.loc[f"{shipping_index[exp_carrier]} transport ship"]
+        shipping_data_transport = shipping_data_transport.set_index("variable")
+
+        # May also consider LNG
+        if fuel_export == "oil":
+            shipping_data_fuel = shipping_data.loc[f"FT fuel transport ship"]
+            shipping_data_fuel = shipping_data_transport.set_index("variable")
+        else: 
+            shipping_data_fuel=shipping_data_transport
+
+        destination = [4.4777, 51.9244] # Rotterdam
+
+        # ToDo: Add more parameters for different ships via csv
+        travel_time = 100 #h # Improve: Travel time dependend on distance
 
         # add export bus for ship loading
         n.madd(
@@ -396,7 +388,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             bus1=nodes_to_connect + " load ship export",
             carrier=exp_carrier + " export",
             p_nom=1e7, 
-            efficiency=efficiency_load_ship[exp_carrier],
+            efficiency=1-shipping_data_transport.loc["(un-) loading losses", "value"],
             #marginal_cost=-price,
         )
 
@@ -416,7 +408,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
                 bus1=nodes_to_connect + " transport amount ship export",
                 carrier=exp_carrier + " export",
                 p_nom=1e7, 
-                efficiency=(1-(boil_off_transport_ship[exp_carrier]*travel_time)), #ToDo: Improve efficiency
+                efficiency=(1-(shipping_data_transport.loc["boil-off", "value"]*travel_time)), #ToDo: Improve efficiency and travel time (searoute)
                 #marginal_cost=-price,
             )
 
@@ -455,11 +447,12 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         # Thinking about ship capacity
         # Add consider boil-off within energy demand for shipping
         # Fuel export profil is constant at the moment
+
         if fuel_export == ["LH2", "NH3"]:
-            ports_fuel_export_profil = pd.DataFrame((((energy_demand_transport_ship[fuel_export] * ports_fuel_export.distance * 1e6))) / 8760).T # Double check conversion
+            ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * ports_fuel_export.distance * 1e6 / 8760).T # Double check conversion
             fuel_nodes_to_connect = nodes_to_connect
         elif fuel_export == "oil": 
-            ports_fuel_export_profil = pd.DataFrame(energy_demand_transport_ship[fuel_export] * ports_fuel_export.distance * 1e6 / 8760).T # Double check conversion
+            ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * ports_fuel_export.distance * 1e6 / 8760).T # Double check conversion
             fuel_nodes_to_connect = nodes_to_connect.str.replace(exp_carrier, fuel_export)
 
             if fuel_nodes_to_connect[fuel_nodes_to_connect.isin(n.buses.index)].empty:
@@ -516,7 +509,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             bus1=nodes_to_connect + " unload ship export",
             carrier=exp_carrier + " export",
             p_nom=1e7, 
-            efficiency=efficiency_unload_ship[export_carrier],
+            efficiency=1-shipping_data_transport.loc["(un-) loading losses", "value"],
             #marginal_cost=-price,
         )
         
