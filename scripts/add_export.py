@@ -249,6 +249,26 @@ def find_nodes_to_connect_to_export_bus(n, exp_carrier, nodes_with_port, ref_bus
     raise KeyError(error_msg)
 
 
+def get_shipping_route(origin, destination):
+    ports_fuel_export = pd.DataFrame(index=nodes_with_port, columns=["x", "y", "distance"])
+    ports_fuel_export.x = n.buses.loc[nodes_with_port].lon
+    ports_fuel_export.y = n.buses.loc[nodes_with_port].lat
+    
+    # Source searoutes: 10.1109/EEM64765.2025.11050281
+    # ToDo: Double check searoutes
+    for i in ports_fuel_export.index:
+        ports_fuel_export.loc[i, "distance"] = sr.searoute([ports_fuel_export.loc[i, "x"], ports_fuel_export.loc[i, "y"]], destination)["properties"]["length"] 
+        ports_fuel_export.loc[i, "duration_hours"] = sr.searoute([ports_fuel_export.loc[i, "x"], ports_fuel_export.loc[i, "y"]], destination)["properties"]["duration_hours"] 
+
+    # ToDo: Double check restrictions for other countries beyond MA
+    # ToDo: Adapt country iso code
+    #route = sr.searoute(origin, destination, append_orig_dest=True, restrictions=['northwest'], include_ports=True, port_params={'only_terminals':True, 'country_pol': "MA", 'country_pod' : "NL"})
+
+    shipping_route = ports_fuel_export
+
+    return shipping_route
+
+
 def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, snakemake):
     """    
     This function creates a centralized export system by adding:
@@ -347,11 +367,14 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         fuel_export = "oil" # "export_carrier" # Mabe add lng
         #fuel_export = export_carrier
 
-        # ToDo: Read parameters via csv
-        # ToDo: connect to snakemake
+        destination = [4.4777, 51.9244] # Rotterdam
+
+        # ToDo: Add more parameters for different ships via csv
+        travel_time = 100 #h # Improve: Travel time dependend on distance
+
         # Kommt bei LH2 auch noch ein Boil-Off hinzu?
         # Source: 10.1109/EEM64765.2025.11050281
-        shipping_data = pd.read_csv("/home/alex-charly/SSD/H2GMA/Github/AP10/pypsa-earth/Morocco/pypsa-earth/data/shipping.csv", index_col=0)
+        shipping_data = pd.read_csv(snakemake.input["shipping_data"], index_col=0)
         shipping_index = {
             "LH2": "H2 (l)",
             "NH3": "NH3 (l)",
@@ -369,10 +392,8 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         else: 
             shipping_data_fuel=shipping_data_transport
 
-        destination = [4.4777, 51.9244] # Rotterdam
-
-        # ToDo: Add more parameters for different ships via csv
-        travel_time = 100 #h # Improve: Travel time dependend on distance
+        # shipping route
+        shipping_route = get_shipping_route(nodes_with_port, destination)
 
         # add export bus for ship loading
         n.madd(
@@ -410,7 +431,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
                 bus1=nodes_to_connect + " transport amount ship export",
                 carrier=exp_carrier + " export",
                 p_nom=1e7, 
-                efficiency=(1-(shipping_data_transport.loc["boil-off", "value"]*travel_time)), #ToDo: Improve efficiency and travel time (searoute)
+                efficiency=(1-(shipping_data_transport.loc["boil-off", "value"]*shipping_route.duration_hours)), #ToDo: Improve efficiency and travel time (searoute)
                 #marginal_cost=-price,
             )
 
@@ -431,30 +452,19 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         # => For now, export country
         # Add warining, if bus does not exits
 
-        destination = destination     # Rotterdam
-        ports_fuel_export = pd.DataFrame(index=nodes_with_port, columns=["x", "y", "distance"])
-        ports_fuel_export.x = n.buses.loc[nodes_with_port].lon
-        ports_fuel_export.y = n.buses.loc[nodes_with_port].lat
         
-        # Source searoutes: 10.1109/EEM64765.2025.11050281
-        # ToDo: Double check searoutes
-        for i in ports_fuel_export.index:
-            ports_fuel_export.loc[i, "distance"] = sr.searoute([ports_fuel_export.loc[i, "x"], ports_fuel_export.loc[i, "y"]], destination)["properties"]["length"] 
-
-        # ToDo: Double check restrictions for other countries beyond MA
-        # ToDo: Adapt country iso code
-        #route = sr.searoute(origin, destination, append_orig_dest=True, restrictions=['northwest'], include_ports=True, port_params={'only_terminals':True, 'country_pol': "MA", 'country_pod' : "NL"})
-
         # Double check fuel_export
         # Thinking about ship capacity
         # Add consider boil-off within energy demand for shipping
         # Fuel export profil is constant at the moment
 
+        # create export profile
+        # assumption: ship tank capacity is enough for round-trip
         if fuel_export == ["LH2", "NH3"]:
-            ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * ports_fuel_export.distance * 1e6 / 8760).T # Double check conversion
+            ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * 2 * shipping_route.distance * 1e6 / 8760).T # Double check conversion
             fuel_nodes_to_connect = nodes_to_connect
         elif fuel_export == "oil": 
-            ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * ports_fuel_export.distance * 1e6 / 8760).T # Double check conversion
+            ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * 2 * shipping_route.distance * 1e6 / 8760).T # Double check conversion
             fuel_nodes_to_connect = nodes_to_connect.str.replace(exp_carrier, fuel_export)
 
             if fuel_nodes_to_connect[fuel_nodes_to_connect.isin(n.buses.index)].empty:
@@ -469,8 +479,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             index=snapshots                                  # setzt Zeitstempel als Index
         ).astype(float)                                      # erzwingt Float-Datentyp
 
-        # Annahme, dass das Schiff hin- und zurückfährt
-        # Somit doppelte Distanz oder?
+        
 
         n.add("Carrier", fuel_export + " transport fuel ship export")
 
