@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 import pypsa
 from _helpers import locate_bus, override_component_attrs, prepare_costs
+import searoute as sr
 
 logger = logging.getLogger(__name__)
 
@@ -326,7 +327,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         y=y_export,
     )
 
-    # add links for exports without co2 intensity
+    # add links for exports without co2 intensity through export carrier
     if exp_carrier in ["H2", "NH3", "LH2"]:
         ref_bus_carrier = {
                 "H2": "H2",
@@ -340,6 +341,8 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         logger.info(f"Adding green export links from {nodes_to_connect} to central {exp_carrier} export bus, "
                     f"with price {price}")
         
+        # ToDo: Read parameters via csv
+        # Dummy
         efficiency_load_ship = {
             "H2": 1,
             "NH3": 1-0, # 10.1109/EEM64765.2025.11050281, page 8
@@ -393,41 +396,120 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             bus1=nodes_to_connect + " load ship export",
             carrier=exp_carrier + " export",
             p_nom=1e7, 
-            efficiency=efficiency_load_ship[export_carrier],
+            efficiency=efficiency_load_ship[exp_carrier],
             #marginal_cost=-price,
         )
 
-        efficiency_transport_ship = {
-            "H2": 0.9,
-            "NH3": 0.8,
-            "LH2": 0.7
-        }
-
-        # add export bus for ship transport
+        # add export bus for ship transport amount
         n.madd(
             "Bus",
-            nodes_to_connect + " transport ship export",
+            nodes_to_connect + " transport amount ship export",
             carrier=exp_carrier + " export",
             location=nodes_to_connect
         )
 
-        # add export link for ship transport
+        # add export bus for ship transport amount
         n.madd(
-            "Link",
-            nodes_to_connect + " transport ship export",
-            bus0=nodes_to_connect + " load ship export",
-            bus1=nodes_to_connect + " transport ship export",
+                "Link",
+                nodes_to_connect + " transport amount ship export",
+                bus0=nodes_to_connect + " load ship export",
+                bus1=nodes_to_connect + " transport amount ship export",
+                carrier=exp_carrier + " export",
+                p_nom=1e7, 
+                efficiency=(1-(boil_off_transport_ship[exp_carrier]*travel_time)), #ToDo: Improve efficiency
+                #marginal_cost=-price,
+            )
+
+        # Boil of or energy demand?
+        # Bei der Rückfahrt kann kein Boil-Off verwendet werden
+        # Bzw. wird das Schiff auch für die Rückfahrt verwendet? Eig. nicht.
+        # add export bus for ship transport fuel
+        # Boil off in Abhängigkeit von der Schiffsgröße
+        n.madd(
+            "Bus",
+            nodes_to_connect + " transport fuel ship export",
             carrier=exp_carrier + " export",
-            p_nom=1e7, 
-            efficiency=efficiency_transport_ship[export_carrier],
-            #marginal_cost=-price,
+            location=nodes_to_connect
         )
 
-        efficiency_unload_ship = {
-            "H2": 1,
-            "NH3": 1-0, # 10.1109/EEM64765.2025.11050281, page 8
-            "LH2": 1-0.02 # 10.1109/EEM64765.2025.11050281, page 8
-        }
+        # add export load for ship transport fuel
+        n.madd(
+                "Load",
+                nodes_to_connect + " transport fuel ship export",
+                bus0=nodes_to_connect + " load ship export",
+                bus1=nodes_to_connect + " transport amount ship export",
+                carrier=exp_carrier + " export",
+                p_nom=1e7, 
+                efficiency=energy_demand_transport_ship[export_carrier], # ToDo: Adapt efficiency, not energy demand
+                #marginal_cost=-price,
+            )
+        
+
+        # Who will be accounted for the emisisons of shipping? all or none? 
+        # => For now, export country
+        # Add warining, if bus does not exits
+
+        destination = destination     # Rotterdam
+        ports_fuel_export = pd.DataFrame(index=nodes_with_port, columns=["x", "y", "distance"])
+        ports_fuel_export.x = n.buses.loc[nodes_with_port].lon
+        ports_fuel_export.y = n.buses.loc[nodes_with_port].lat
+        
+        # Source searoutes: 10.1109/EEM64765.2025.11050281
+        # ToDo: Double check searoutes
+        for i in ports_fuel_export.index:
+            ports_fuel_export.loc[i, "distance"] = sr.searoute([ports_fuel_export.loc[i, "x"], ports_fuel_export.loc[i, "y"]], destination)["properties"]["length"] 
+
+        # ToDo: Double check restrictions for other countries beyond MA
+        # ToDo: Adapt country iso code
+        #route = sr.searoute(origin, destination, append_orig_dest=True, restrictions=['northwest'], include_ports=True, port_params={'only_terminals':True, 'country_pol': "MA", 'country_pod' : "NL"})
+
+        # Double check fuel_export
+        # Thinking about ship capacity
+        # Add consider boil-off within energy demand for shipping
+        if fuel_export == ["LH2", "NH3", "MeOH"]:
+            ports_fuel_export_profil = pd.DataFrame((((energy_demand_transport_ship[fuel_export] * ports_fuel_export.distance * 1e6))) / 8760).T # Double check conversion
+            fuel_nodes_to_connect = nodes_to_connect
+        elif fuel_export == "oil": 
+            ports_fuel_export_profil = pd.DataFrame(energy_demand_transport_ship[fuel_export] * ports_fuel_export.distance * 1e6 / 8760).T # Double check conversion
+            fuel_nodes_to_connect = nodes_to_connect.str.replace(exp_carrier, fuel_export)
+
+            if fuel_nodes_to_connect[fuel_nodes_to_connect.isin(n.buses.index)].empty:
+                print(f"Warning: None of the {fuel_export} buses exist!")
+
+        snapshots = pd.date_range(freq="h", **snakemake.params.snapshots)
+        #ports_fuel_export_profil = pd.DataFrame(ports_fuel_export_profil.value, index=snapshots, columns=ports_fuel_export.index)
+
+        ports_fuel_export_profil = pd.DataFrame(
+            np.repeat(ports_fuel_export_profil.values, len(snapshots), axis=0),
+            index=snapshots,
+            columns=ports_fuel_export_profil.columns)
+        
+        # Annahme, dass das Schiff hin- und zurückfährt
+        n.madd(
+            "Load",
+            fuel_nodes_to_connect + " transport fuel ship export",
+            bus=fuel_nodes_to_connect,
+            carrier=fuel_export + " transport fuel ship export", 
+            p_set=ports_fuel_export_profil,
+        )
+        
+        # What if the ship does not drive? Or multiple ships drive?
+        # Add global constraint?
+        if fuel_export == ["oil"]: # MeOH, NH3, LNG? 
+            co2 = (
+                ports_fuel_export_profil.sum()
+                * costs.at["oil", "CO2 intensity"]
+            ).sum()
+
+            n.add(
+                "Load",
+                f"export shipping {fuel_export} emissions",
+                bus="co2 atmosphere",
+                carrier=f"export shipping {fuel_export} emissions",
+                p_set=-co2,
+            )
+
+        
 
         # add export bus for ship unloading
         n.madd(
@@ -646,7 +728,7 @@ if __name__ == "__main__":
             sopts="144H",
             discountrate=0.071,
             demand="NZ",
-            eopts="NH3v75",
+            eopts="H2v75",
             configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.MA_2050.yaml",
         )
 
