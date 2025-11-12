@@ -317,7 +317,9 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
     x_export = country_shape.geometry.centroid.x.min() - 2
     y_export = country_shape.geometry.centroid.y.max() + 2
 
-    # add one central export bus
+    # add one central export bus and carrier
+    n.add("Carrier", exp_carrier + " export")
+
     n.add(
         "Bus",
         exp_carrier + " export",
@@ -362,8 +364,8 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
 
         # May also consider LNG
         if fuel_export == "oil":
-            shipping_data_fuel = shipping_data.loc[f"FT fuel transport ship"]
-            shipping_data_fuel = shipping_data_transport.set_index("variable")
+            shipping_data_fuel = shipping_data.loc["FT fuel transport ship"]
+            shipping_data_fuel = shipping_data_fuel.set_index("variable")
         else: 
             shipping_data_fuel=shipping_data_transport
 
@@ -469,6 +471,9 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
 
         # Annahme, dass das Schiff hin- und zurückfährt
         # Somit doppelte Distanz oder?
+
+        n.add("Carrier", fuel_export + " transport fuel ship export")
+
         n.madd(
             "Load",
             fuel_nodes_to_connect + " transport fuel ship export",
@@ -484,6 +489,8 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
                 ports_fuel_export_profil.sum()
                 * costs.at["oil", "CO2 intensity"]
             ).sum()
+
+            n.add("Carrier", f"export shipping {fuel_export} emissions")
 
             n.add(
                 "Load",
@@ -505,7 +512,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
         n.madd(
             "Link",
             nodes_to_connect + " unload ship export",
-            bus0=nodes_to_connect + " transport ship export",
+            bus0=nodes_to_connect + " transport amount ship export",
             bus1=nodes_to_connect + " unload ship export",
             carrier=exp_carrier + " export",
             p_nom=1e7, 
@@ -636,6 +643,8 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
                 f"Combination of values for export_store and export_store_capital_costs ({config_store_costs}, {exp_carrier}) "
                 "are not valid!"
             )
+
+        n.add("Carrier", exp_carrier + " export Store")
 
         n.add(
             "Store",
