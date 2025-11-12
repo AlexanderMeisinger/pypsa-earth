@@ -346,6 +346,37 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
             "LH2": 1-0.02 # 10.1109/EEM64765.2025.11050281, page 8
         }
 
+        # Dummy
+        boil_off_transport_ship = {
+            "H2": 0.5, # %/h
+            "NH3": 0.6, # %/h
+            "LH2": 0.7 # %/h
+        }
+
+        # Dummy
+        # Kommt bei LH2 auch noch ein Boil-Off hinzu?
+        energy_demand_transport_ship = {
+            "H2": 0.48, # MWh/km
+            "NH3": 0.58, # MWh/km
+            "LH2": 0.68, # MWh/km
+            "oil": 0.68, # MWh/km
+        }
+
+        destination = [4.4777, 51.9244] # Rotterdam
+
+        fuel_export = "oil" # "export_carrier" # Mabe add lng
+        #fuel_export = export_carrier
+
+        # ToDo: Add more parameters for different ships via csv
+        travel_time = 100 #h # Improve: Travel time dependend on distance
+
+        efficiency_unload_ship = {
+            "H2": 1,
+            "NH3": 1-0, # 10.1109/EEM64765.2025.11050281, page 8
+            "LH2": 1-0.02 # 10.1109/EEM64765.2025.11050281, page 8
+        }
+
+
         # add export bus for ship loading
         n.madd(
             "Bus",
