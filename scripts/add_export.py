@@ -523,8 +523,9 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
 
 def add_export_crossborder(exp_carrier, nodes_to_connect, price):
 
-    fuel_export = snakemake.params.fuel_export
-    destination = snakemake.params.destination
+    fuel_export = snakemake.params.export_fuel_export
+    destination = snakemake.params.export_destination
+    discountrate = snakemake.params.costs["discountrate"][0]
 
     # Kommt bei LH2 auch noch ein Boil-Off hinzu?
     # Source: 10.1109/EEM64765.2025.11050281
@@ -587,6 +588,30 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
             p_nom=1e7, 
             efficiency=(1-(shipping_data_transport.loc["boil-off", "value"]*shipping_route.duration_hours)), #ToDo: Improve efficiency and travel time (searoute)
             #marginal_cost=-price,
+        )
+    
+    # double check if this is already enough? May I have to change the bus?
+    ship_capacity = costs.loc[f"{shipping_index[exp_carrier]} transport ship", "capacity"]
+    capital_cost = calculate_annuity(costs, discountrate).loc[f"{shipping_index[exp_carrier]} transport ship"]
+    
+    # Use this function also for add_export
+    # ToDo: Check if port is available for this
+    ships_required = get_ships_required(export_volume, shipping_route, ship_capacity)
+
+    n.add(
+            "Store",
+            nodes_to_connect + " transport ship export",
+            bus=nodes_to_connect + " transport ship export",
+            e_nom_extendable=True,
+            # Ships may be starting at end of year and start deliver at the beginning of the year
+            # ToDo: Double check if e_cyclic = True does not lead to low production at the beginning
+            e_cyclic=True,
+            # Full capital cost of the ship
+            capital_cost=capital_cost,
+            # Additions that are not in TRACE
+            e_nom_min=costs.loc["capacity", "value"] * ships_required,
+            e_nom_max=costs.loc["capacity", "value"] * ships_required,
+            lifetime=costs.loc["lifetime", "value"],
         )
 
     # Boil of or energy demand?

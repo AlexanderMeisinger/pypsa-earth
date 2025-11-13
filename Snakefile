@@ -1166,9 +1166,9 @@ rule add_export:
         export_endogenous=config["export"]["endogenous"],
         export_price=config["export"]["price"],
         export_volume=config["export"]["volume"],
-        export_crossborder=config["export"]["export_crossborder"]["enable"]
-        export_destination=config["export"]["export_crossborder"]["destination"]
-        export_fuel_export=config["export"]["export_crossborder"]["fuel_export"]
+        export_crossborder=config["export"]["export_crossborder"]["enable"],
+        export_destination=config["export"]["export_crossborder"]["destination"],
+        export_fuel_export=config["export"]["export_crossborder"]["fuel_export"],
         snapshots=config["snapshots"],
         costs=config["costs"],
     input:
