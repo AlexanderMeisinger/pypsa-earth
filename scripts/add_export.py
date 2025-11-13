@@ -24,7 +24,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pypsa
-from _helpers import locate_bus, override_component_attrs, prepare_costs
+from _helpers import locate_bus, override_component_attrs, prepare_costs, calculate_annuity
 import searoute as sr
 
 logger = logging.getLogger(__name__)

@@ -963,6 +963,21 @@ def annuity(n, r):
         return r / (1.0 - 1.0 / (1.0 + r) ** n)
     else:
         return 1 / n
+    
+
+def calculate_annuity(costs, r):
+    """
+    Calculate annuity based on EAC.
+
+    invest - investment
+    fom    - annual FOM in percentage of investment
+    lifetime - lifetime of investment in years
+    r      - discount rate in percent
+    """
+
+    r = r / 100.0
+    annuity_factor = r / (1.0 - 1.0 / (r + 1.0) ** (costs.lifetime))
+    return (annuity_factor + costs.FOM / 100.0) * costs.investment
 
 
 # Single source for the currency reference year (aligned with `technology-data` output files / PyPSA-Earth input cost files).
