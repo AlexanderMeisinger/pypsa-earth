@@ -1166,6 +1166,9 @@ rule add_export:
         export_endogenous=config["export"]["endogenous"],
         export_price=config["export"]["price"],
         export_volume=config["export"]["volume"],
+        export_crossborder=config["export"]["export_crossborder"]["enable"]
+        export_destination=config["export"]["export_crossborder"]["destination"]
+        export_fuel_export=config["export"]["export_crossborder"]["fuel_export"]
         snapshots=config["snapshots"],
         costs=config["costs"],
     input:
@@ -1177,6 +1180,7 @@ rule add_export:
         shapes_path="resources/"
         + RDIR
         + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
+        shipping_data="data/shipping.csv"
     output:
         RESDIR
         + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_exp{eopts}.nc",
