@@ -112,7 +112,7 @@ def create_ship_profile(export_volume, ship_opts):
         The ship profile with absolute values as a pandas Series.
 
     """
-    ship_capacity = ship_opts["ship_capacity"] * 1e6  # convert TWh/ship to MWh/ship
+    ship_capacity = ship_opts["ship_capacity"]  # convert TWh/ship to MWh/ship
     travel_time = ship_opts["travel_time"]
     fill_time = ship_opts["fill_time"]
     unload_time = ship_opts["unload_time"]
@@ -550,6 +550,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
     # shipping route
     shipping_route = get_shipping_route(nodes_with_port, destination)
 
+    # ship loading
     # add export bus for ship loading
     n.madd(
         "Bus",
@@ -565,25 +566,25 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
         bus0=nodes_to_connect,
         bus1=nodes_to_connect + " load ship export",
         carrier=exp_carrier + " export",
-        p_nom=1e7, 
+        p_nom_extendable=True, 
         efficiency=1-shipping_data_transport.loc["(un-) loading losses", "value"],
-        #marginal_cost=-price,
     )
 
-    # add export bus for ship transport amount
+    # ship transport
+    # add export bus for ship transport
     n.madd(
         "Bus",
-        nodes_to_connect + " transport amount ship export",
+        nodes_to_connect + " transport ship export",
         carrier=exp_carrier + " export",
         location=nodes_to_connect
     )
 
-    # add export bus for ship transport amount
+    # add export bus for ship transport
     n.madd(
             "Link",
-            nodes_to_connect + " transport amount ship export",
+            nodes_to_connect + " transport ship export",
             bus0=nodes_to_connect + " load ship export",
-            bus1=nodes_to_connect + " transport amount ship export",
+            bus1=nodes_to_connect + " transport ship export",
             carrier=exp_carrier + " export",
             p_nom=1e7, 
             efficiency=(1-(shipping_data_transport.loc["boil-off", "value"]*shipping_route.duration_hours)), #ToDo: Improve efficiency and travel time (searoute)
@@ -621,7 +622,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
     # Boil off in Abhängigkeit von der Schiffsgröße
     n.madd(
         "Bus",
-        nodes_to_connect + " transport fuel ship export",
+        nodes_to_connect + " fuel ship export",
         carrier=exp_carrier + " export",
         location=nodes_to_connect
     )
@@ -660,13 +661,13 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
 
     
 
-    n.add("Carrier", fuel_export + " transport fuel ship export")
+    n.add("Carrier", fuel_export + " fuel ship export")
 
     n.madd(
         "Load",
-        fuel_nodes_to_connect + " transport fuel ship export",
+        fuel_nodes_to_connect + " fuel ship export",
         bus=fuel_nodes_to_connect,
-        carrier=fuel_export + " transport fuel ship export", 
+        carrier=fuel_export + " fuel ship export", 
         p_set=ports_fuel_export_profil,
     )
 
@@ -700,12 +701,11 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
     n.madd(
         "Link",
         nodes_to_connect + " unload ship export",
-        bus0=nodes_to_connect + " transport amount ship export",
+        bus0=nodes_to_connect + " transport ship export",
         bus1=nodes_to_connect + " unload ship export",
         carrier=exp_carrier + " export",
-        p_nom=1e7, 
+        p_nom_extenable=True, 
         efficiency=1-shipping_data_transport.loc["(un-) loading losses", "value"],
-        #marginal_cost=-price,
     )
     
     
@@ -781,7 +781,7 @@ if __name__ == "__main__":
             sopts="144H",
             discountrate=0.071,
             demand="NZ",
-            eopts="H2v75",
+            eopts="NH3v75",
             configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.MA_2050.yaml",
         )
 
