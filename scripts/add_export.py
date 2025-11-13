@@ -269,6 +269,24 @@ def get_shipping_route(origin, destination):
     return shipping_route
 
 
+def get_ships_required(export_volume, shipping_route, ship_capacity):   
+    travel_time = 2 * shipping_route.duration_hours
+
+    ship_opts = snakemake.params.export_ship
+    fill_time = ship_opts["fill_time"] # ToDo: Change necessary
+    unload_time = ship_opts["unload_time"]  # ToDo:  Change necessary
+
+    #landing = export_volume / ship_capacity  # fraction of max delivery
+    #pause_time = 8760 / landing - (fill_time + travel_time)
+    # full_cycle = fill_time + travel_time + unload_time + pause_time # not used
+
+    max_transport = ship_capacity * 8760 / (fill_time + travel_time + unload_time)
+
+    ships_required = np.ceil(export_volume / max_transport)
+
+    return ships_required
+
+
 def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, snakemake):
     """    
     This function creates a centralized export system by adding:
