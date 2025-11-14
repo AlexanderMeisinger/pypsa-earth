@@ -975,7 +975,6 @@ def calculate_annuity(costs, r):
     r      - discount rate in percent
     """
 
-    r = r / 100.0
     annuity_factor = r / (1.0 - 1.0 / (r + 1.0) ** (costs.lifetime))
     return (annuity_factor + costs.FOM / 100.0) * costs.investment
 
