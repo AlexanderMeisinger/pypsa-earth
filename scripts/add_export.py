@@ -694,7 +694,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
     n.madd(
         "Bus",
         nodes_to_connect + " fuel ship export",
-        carrier=exp_carrier + " export",
+        carrier=exp_carrier + " fuel ship export",
         location=nodes_to_connect
     )
 
@@ -725,12 +725,18 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
         p_set=ports_fuel_export_profil,
     )
 
-    # What if the ship does not drive? Or multiple ships drive?
-    # Add global constraint?
-    if fuel_export == ["oil"]: # MeOH, NH3, LNG? 
+    # consider emissions from fuel ship
+    if fuel_export in ["oil", "MeOH"]:
+        # match label from costs
+        co2_intensity_carrier = {
+            "oil": "oil",
+            "MeOH": "methanol"
+        }
+
+        # identify emissions due to fuel ship
         co2 = (
             ports_fuel_export_profil.sum()
-            * costs.at["oil", "CO2 intensity"]
+            * costs.at[co2_intensity_carrier[fuel_export], "CO2 intensity"]
         ).sum()
 
         # add load for fuel ship emissions
@@ -738,7 +744,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
             "Load",
             f"export shipping {fuel_export} emissions",
             bus="co2 atmosphere",
-            carrier=f"export shipping {fuel_export} emissions",
+            carrier=fuel_export + " fuel ship export",
             p_set=-co2,
         )
 
