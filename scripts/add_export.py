@@ -516,7 +516,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
 
 def add_export_crossborder(exp_carrier, nodes_to_connect, price):
 
-    fuel_export = snakemake.params.export_fuel_export
+    fuel_export = snakemake.params.export_ship_fuel
     destination = snakemake.params.export_destination
     discountrate = snakemake.params.costs["discountrate"][0]
 
