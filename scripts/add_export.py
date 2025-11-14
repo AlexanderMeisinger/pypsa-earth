@@ -112,7 +112,7 @@ def create_ship_profile(export_volume, ship_opts):
         The ship profile with absolute values as a pandas Series.
 
     """
-    ship_capacity = ship_opts["ship_capacity"]  # convert TWh/ship to MWh/ship
+    ship_capacity = ship_opts["ship_capacity"] * 1e6  # convert TWh/ship to MWh/ship
     travel_time = ship_opts["travel_time"]
     fill_time = ship_opts["fill_time"]
     unload_time = ship_opts["unload_time"]
