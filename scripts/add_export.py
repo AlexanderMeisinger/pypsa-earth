@@ -563,7 +563,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
         bus1=nodes_to_connect + " load ship export",
         carrier=exp_carrier + " export",
         p_nom_extendable=True, 
-        efficiency=1-shipping_data_transport.loc["(un-) loading losses", "value"],
+        efficiency=1-shipping_data_transport.loc["(un-) loading losses", "value"]/100,
     )
 
     # ship transport
