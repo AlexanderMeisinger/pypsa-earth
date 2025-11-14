@@ -618,13 +618,14 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
             e_max_pu=0 # Store is used to reflect investment costs
         )
     
+    # Double check "=="
     n.add(
             "GlobalConstraint",
-            "export ship capacity investment",
+            "export_ship_capacity_investment",
             type="tech_capacity_expansion_limit",
             carrier_attribute="export ship capacity investment",
             sense="==",
-            constant=ship_capacity*ships_required,
+            constant=ship_capacity*ships_required.max(),
         )
 
     # Boil of or energy demand?
