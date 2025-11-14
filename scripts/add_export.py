@@ -518,15 +518,52 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
     return
 
 
-def add_export_crossborder(exp_carrier, nodes_to_connect, price):
+def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
+    """
+    Add cross-border export infrastructure for ship-based energy exports.
+
+    This function builds a complete export chain for an energy carrier by ship 
+    (e.g. LH2, NH3, MeOH, oil) including:
+    - loading infrastructure,
+    - ship transport including boil-off losses,
+    - fuel consumption of the ships,
+    - emission accounting,
+    - unloading infrastructure,
+    - import to to foreign markets.
+
+    Parameters
+    ----------
+    exp_carrier : str
+        Exported energy carrier (e.g. "LH2", "NH3", "MeOH").
+        Used for naming buses, links, carriers, and selecting ship data.
+
+    nodes_to_connect : pandas.Index or pandas.Series
+        Buses representing ports in the exporting region. 
+        All infrastructure is created for each of these buses.
+
+    port_fraction : pandas.Series
+        Weight of export distribution among ports. 
+
+    price : float
+        Export price (€/MWh). Used as negative marginal cost 
+        on the final export link.
+
+    Returns
+    -------
+    None
+        Modifies the PyPSA network `n` in place by adding buses, links,
+        stores, loads, carriers, and a global constraint.
+    """
 
     fuel_export = snakemake.params.export_ship_fuel
     destination = snakemake.params.export_destination
     discountrate = snakemake.params.costs["discountrate"][0]
 
-    # Kommt bei LH2 auch noch ein Boil-Off hinzu?
-    # Source: 10.1109/EEM64765.2025.11050281
+    # load shipping data (capacity, losses, speed, etc.)
+    # source: 10.1109/EEM64765.2025.11050281
     shipping_data = pd.read_csv(snakemake.input["shipping_data"], index_col=0)
+
+    # map exported carrier to labels in the shipping database
     shipping_index = {
         "LH2": "H2 (l)",
         "NH3": "NH3 (l)",
@@ -534,21 +571,20 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
         "oil": "FT"
     }
 
+    # selection of ship transport data
     shipping_data_transport = shipping_data.loc[f"{shipping_index[exp_carrier]} transport ship"]
     shipping_data_transport = shipping_data_transport.set_index("variable")
 
-    # May also consider LNG
     if fuel_export == "oil":
         shipping_data_fuel = shipping_data.loc["FT fuel transport ship"]
         shipping_data_fuel = shipping_data_fuel.set_index("variable")
     else: 
         shipping_data_fuel=shipping_data_transport
 
-    # shipping route
+    # determine shipping route
     shipping_route = get_shipping_route(nodes_with_port, destination)
     shipping_distance = shipping_route.distance
     shipping_hour = shipping_route.distance/shipping_data_fuel.loc["average speed", "value"]
-
 
     # ship loading
     # add export bus for ship loading
@@ -571,6 +607,15 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
     )
 
     # ship transport
+    # assumptions:
+    # - boil-off losses are only considered for the outward journey (Source: 10.1109/EEM64765.2025.11050281)
+    # - storage as ship is only used for investment consideration
+    # improvements/analysis:
+    # - use get_ships_required() also for add_export()
+    # - shipping houer, fill time and unload time consideration for boil-off?
+    # - p_nom=1e7 or p_nom_extenable?
+    # - analyse global constraint ("==", ">=")
+
     # add export bus for ship transport
     n.madd(
         "Bus",
@@ -579,8 +624,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
         location=nodes_to_connect
     )
 
-    # add export bus for ship transport
-    # Boil-off losses are only considered for the outward journey (Source: 10.1109/EEM64765.2025.11050281)
+    # add export link for ship transport
     n.madd(
             "Link",
             nodes_to_connect + " transport ship export",
@@ -592,29 +636,25 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
         )
     
     # add store for ship transport
+    # get ship transport data
     ship_capacity = shipping_data_transport.loc["capacity", "value"]
     ships_required = get_ships_required(export_volume, ship_capacity, shipping_hour)
     ship_lifetime = costs.lifetime.loc[f"{shipping_index[exp_carrier]} transport ship"]
 
     capital_cost = calculate_annuity(costs, discountrate).loc[f"{shipping_index[exp_carrier]} transport ship"]
     capital_cost = capital_cost/ship_capacity
-    # Use this function also for add_export
-    # ToDo: Check if port is available for this
-    
+
+    # add carrier for considering ships as store (global constraint)
     n.add("Carrier", "export ship capacity investment")
 
+    # add export store as ship
     n.madd(
             "Store",
             nodes_to_connect + " transport ship export",
-            # double check if this is already enough? May I have to change the bus?
             bus=nodes_to_connect + " transport ship export",
             e_nom_extendable=True,
-            # Ships may be starting at end of year and start deliver at the beginning of the year
-            # ToDo: Double check if e_cyclic = True does not lead to low production at the beginning
             e_cyclic=True,
-            # Full capital cost of the ship
-            capital_cost=capital_cost,
-            # Additions that are not in TRACE
+            capital_cost=capital_cost, # Full capital cost of the ship
             e_nom_min=0,
             e_nom_max=ship_capacity * ships_required,
             lifetime=ship_lifetime,
@@ -622,7 +662,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
             e_max_pu=0 # Store is used to reflect investment costs
         )
     
-    # Double check "=="
+    # add global constraint in order gurantee enough ship investments (endogenous: region)
     n.add(
             "GlobalConstraint",
             "export_ship_capacity_investment",
@@ -632,11 +672,25 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
             constant=ship_capacity*ships_required.max(),
         )
 
-    # Boil of or energy demand?
-    # Bei der Rückfahrt kann kein Boil-Off verwendet werden
-    # Bzw. wird das Schiff auch für die Rückfahrt verwendet? Eig. nicht.
-    # add export bus for ship transport fuel
-    # Boil off in Abhängigkeit von der Schiffsgröße
+
+    # create export profile
+    # assumptions: 
+    # - ship tank capacity is enough for round-trip
+    # - constant fuel export profil
+    # - regional fuel demand is split according to port fraction (exogen)
+    # - fuel emisisons belongs to export country
+    # - return trip: empty ship; no boil-off
+
+    # improvements/analysis
+    # - use boil-off as fuel
+    # - add warnings if parameter does not exist
+    # - add LNG as fuel
+    # - analyse zero ships
+    # - regional fuel demand according to ship usage
+
+    # add carrier and bus for fuel ship loading
+    n.add("Carrier", fuel_export + " fuel ship export")
+
     n.madd(
         "Bus",
         nodes_to_connect + " fuel ship export",
@@ -679,8 +733,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
             * costs.at["oil", "CO2 intensity"]
         ).sum()
 
-        n.add("Carrier", f"export shipping {fuel_export} emissions")
-
+        # add load for fuel ship emissions
         n.add(
             "Load",
             f"export shipping {fuel_export} emissions",
@@ -708,7 +761,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
         efficiency=1-shipping_data_transport.loc["(un-) loading losses", "value"],
     )
     
-    
+    # add export link for import port
     n.madd(
         "Link",
         nodes_to_connect + " export",
