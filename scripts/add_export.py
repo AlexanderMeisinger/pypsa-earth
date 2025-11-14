@@ -653,10 +653,10 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
     # create export profile
     # assumption: ship tank capacity is enough for round-trip
     if fuel_export == ["LH2", "NH3"]:
-        ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * 2 * shipping_route.distance * 1e6 / 8760).T # Double check conversion
+        ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * 2 * shipping_distance * 1e6 / 8760).T # Double check conversion
         fuel_nodes_to_connect = nodes_to_connect
     elif fuel_export == "oil": 
-        ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * 2 * shipping_route.distance * 1e6 / 8760).T # Double check conversion
+        ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * 2 * shipping_distance * 1e6 / 8760).T # Double check conversion
         fuel_nodes_to_connect = nodes_to_connect.str.replace(exp_carrier, fuel_export)
 
         if fuel_nodes_to_connect[fuel_nodes_to_connect.isin(n.buses.index)].empty:
