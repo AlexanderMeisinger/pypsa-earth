@@ -415,19 +415,33 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
         logger.info(f"Adding green export links from {nodes_to_connect} to central {exp_carrier} export bus, "
                     f"with price {price} and CO2 intensity {co2_intensity}")
         
-        n.madd(
-            "Link",
-            nodes_to_connect + " export",
-            bus0=nodes_to_connect,
-            bus1=exp_carrier + " export",
-            bus2="co2 atmosphere",
-            carrier=exp_carrier + " export",
-            p_nom_extendable=True,
-            p_nom=1e7, 
-            efficiency=1,
-            efficiency2=co2_intensity,
-            marginal_cost=-price,
-        )
+        #n.madd(
+        #    "Link",
+        #    nodes_to_connect + " export",
+        #    bus0=nodes_to_connect,
+        #    bus1=exp_carrier + " export",
+        #    bus2="co2 atmosphere",
+        #    carrier=exp_carrier + " export",
+        #    p_nom_extendable=True,
+        #    p_nom=1e7, 
+        #    efficiency=1, # Warum ist efficiency = 1
+        #    efficiency2=co2_intensity,
+        #    marginal_cost=-price,
+        #)
+
+        if snakemake.params.export_crossborder:
+            add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price)
+        else:
+            n.madd(
+                    "Link",
+                    nodes_to_connect + " export",
+                    bus0=nodes_to_connect,
+                    bus1=exp_carrier + " export",
+                    carrier=exp_carrier + " export",
+                    p_nom=1e7, 
+                    efficiency=1,
+                    marginal_cost=-price,
+                )
 
     else:
         raise NotImplementedError(f"Export carrier {exp_carrier} not implemented")
