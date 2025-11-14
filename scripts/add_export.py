@@ -579,6 +579,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
         shipping_data_fuel = shipping_data.loc["FT fuel transport ship"]
         shipping_data_fuel = shipping_data_fuel.set_index("variable")
     else: 
+        fuel_export == exp_carrier
         shipping_data_fuel=shipping_data_transport
 
     # determine shipping route
@@ -694,7 +695,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
     n.madd(
         "Bus",
         nodes_to_connect + " fuel ship export",
-        carrier=exp_carrier + " fuel ship export",
+        carrier=fuel_export + " fuel ship export",
         location=nodes_to_connect
     )
 
