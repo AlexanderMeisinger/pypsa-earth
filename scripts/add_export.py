@@ -626,6 +626,10 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
     )
 
     # add export link for ship transport
+    # calculate efficiency due to boil off
+    efficiency_boil_off = (1-shipping_data_transport.loc["boil-off", "value"]/100)**shipping_hour
+    efficiency_boil_off.index = nodes_to_connect + " transport ship export"
+    
     n.madd(
             "Link",
             nodes_to_connect + " transport ship export",
@@ -633,7 +637,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
             bus1=nodes_to_connect + " transport ship export",
             carrier=exp_carrier + " export",
             p_nom=1e7, 
-            efficiency=(1-shipping_data_transport.loc["boil-off", "value"]/100)**shipping_hour,
+            efficiency=efficiency_boil_off,
         )
     
     # add store for ship transport
@@ -657,7 +661,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
             e_cyclic=True,
             capital_cost=capital_cost, # Full capital cost of the ship
             e_nom_min=0,
-            e_nom_max=ship_capacity * ships_required,
+            e_nom_max=ship_capacity * ships_required.max(),
             lifetime=ship_lifetime,
             carrier = "export ship capacity investment",
             e_max_pu=0 # Store is used to reflect investment costs
@@ -700,22 +704,24 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
     )
 
     # determine regional fuel amount based on port fraction
-    ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * 2 * shipping_distance / 8760).T # Double check conversion
-    ports_fuel_export_profil = ports_fuel_export_profil * ships_required.max() * (port_fraction/port_fraction.sum())
+    ports_fuel_export_demand = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * 2 * shipping_distance).T # Double check conversion
+    ports_fuel_export_demand = ports_fuel_export_demand * ships_required.max() * (port_fraction/port_fraction.sum())
 
     # adjust port bus in accordance to fuel carrier
     if fuel_export == ["LH2", "NH3", "MeOH"]:
         fuel_nodes_to_connect = nodes_to_connect
     elif fuel_export == "oil":
         fuel_nodes_to_connect = nodes_to_connect.str.replace(exp_carrier, fuel_export)
-
-        if fuel_nodes_to_connect[fuel_nodes_to_connect.isin(n.buses.index)].empty:
+    elif fuel_nodes_to_connect[fuel_nodes_to_connect.isin(n.buses.index)].empty:
             print(f"Warning: None of the {fuel_export} buses exist!")
 
-    # create region fuel profile
+    # create region fuel profile    
+    ports_fuel_export_profil = ports_fuel_export_demand / 8760
     snapshots = pd.date_range(freq="h", **snakemake.params.snapshots)
+    
     ports_fuel_export_profil = ports_fuel_export_profil.squeeze()
     ports_fuel_export_profil = pd.DataFrame([ports_fuel_export_profil] * len(snapshots), index=snapshots).astype(float)
+    ports_fuel_export_profil.columns = fuel_nodes_to_connect + " fuel ship export"
 
     # add load for fuel ship
     n.madd(
@@ -739,6 +745,9 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
             ports_fuel_export_profil.sum()
             * costs.at[co2_intensity_carrier[fuel_export], "CO2 intensity"]
         ).sum()
+        co2 = co2 / 8760
+        snapshots = pd.date_range(freq="h", **snakemake.params.snapshots)
+        co2 = pd.Series(co2, index=snapshots)
 
         # add load for fuel ship emissions
         n.add(
