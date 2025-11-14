@@ -258,7 +258,6 @@ def get_shipping_route(origin, destination):
     # ToDo: Double check searoutes
     for i in ports_fuel_export.index:
         ports_fuel_export.loc[i, "distance"] = sr.searoute([ports_fuel_export.loc[i, "x"], ports_fuel_export.loc[i, "y"]], destination)["properties"]["length"] 
-        ports_fuel_export.loc[i, "duration_hours"] = sr.searoute([ports_fuel_export.loc[i, "x"], ports_fuel_export.loc[i, "y"]], destination)["properties"]["duration_hours"] 
 
     # ToDo: Double check restrictions for other countries beyond MA
     # ToDo: Adapt country iso code
@@ -269,16 +268,10 @@ def get_shipping_route(origin, destination):
     return shipping_route
 
 
-def get_ships_required(export_volume, shipping_route, ship_capacity):   
-    travel_time = 2 * shipping_route.duration_hours
-
-    ship_opts = snakemake.params.export_ship
-    fill_time = ship_opts["fill_time"] # ToDo: Change necessary
-    unload_time = ship_opts["unload_time"]  # ToDo:  Change necessary
-
-    #landing = export_volume / ship_capacity  # fraction of max delivery
-    #pause_time = 8760 / landing - (fill_time + travel_time)
-    # full_cycle = fill_time + travel_time + unload_time + pause_time # not used
+def get_ships_required(export_volume, ship_capacity, shipping_hour):   
+    travel_time = 2 * shipping_hour
+    fill_time = snakemake.params.export_ship_fill_time
+    unload_time = snakemake.params.export_ship_unload_time
 
     max_transport = ship_capacity * 8760 / (fill_time + travel_time + unload_time)
 
@@ -549,6 +542,9 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
 
     # shipping route
     shipping_route = get_shipping_route(nodes_with_port, destination)
+    shipping_distance = shipping_route.distance
+    shipping_hour = shipping_route.distance/shipping_data_fuel.loc["average speed", "value"]
+
 
     # ship loading
     # add export bus for ship loading
