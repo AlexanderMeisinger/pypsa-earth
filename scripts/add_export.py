@@ -185,11 +185,15 @@ def select_ports(n):
     gcol = "gadm_{}".format(gadm_layer_id)
     ports_sel = ports.loc[~ports[gcol].duplicated(keep="first")].set_index(gcol)
 
+    # Select and define the nodes with ports and ports fraction
+    port_fraction = ports_sel["fraction"].rename("port fraction")
+    port_fraction.index.name = "Bus"
+
     # Select and define the nodes with ports
     nodes_with_port = n.buses.loc[ports_sel.index].index
     nodes_with_port.name = "Bus"
 
-    return nodes_with_port
+    return nodes_with_port, port_fraction
 
 
 def find_nodes_to_connect_to_export_bus(n, exp_carrier, nodes_with_port, ref_bus_carrier=None):
@@ -280,7 +284,7 @@ def get_ships_required(export_volume, ship_capacity, shipping_hour):
     return ships_required
 
 
-def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, snakemake):
+def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fraction, costs, snakemake):
     """    
     This function creates a centralized export system by adding:
     1. A central export bus
@@ -375,7 +379,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, costs, s
                     f"with price {price}")
         
         if snakemake.params.export_crossborder:
-            add_export_crossborder(exp_carrier, nodes_to_connect, price)
+            add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price)
         else:
             n.madd(
                     "Link",
@@ -640,42 +644,25 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
         location=nodes_to_connect
     )
 
-    # add export load for ship transport fuel
-    # Who will be accounted for the emisisons of shipping? all or none? 
-    # => For now, export country
-    # Add warining, if bus does not exits
+    # determine regional fuel amount based on port fraction
+    ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * 2 * shipping_distance / 8760).T # Double check conversion
+    ports_fuel_export_profil = ports_fuel_export_profil * ships_required.max() * (port_fraction/port_fraction.sum())
 
-    
-    # Double check fuel_export
-    # Thinking about ship capacity
-    # Add consider boil-off within energy demand for shipping
-    # Fuel export profil is constant at the moment
-
-    # create export profile
-    # assumption: ship tank capacity is enough for round-trip
-    if fuel_export == ["LH2", "NH3"]:
-        ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * 2 * shipping_distance * 1e6 / 8760).T # Double check conversion
+    # adjust port bus in accordance to fuel carrier
+    if fuel_export == ["LH2", "NH3", "MeOH"]:
         fuel_nodes_to_connect = nodes_to_connect
-    elif fuel_export == "oil": 
-        ports_fuel_export_profil = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * 2 * shipping_distance * 1e6 / 8760).T # Double check conversion
+    elif fuel_export == "oil":
         fuel_nodes_to_connect = nodes_to_connect.str.replace(exp_carrier, fuel_export)
 
         if fuel_nodes_to_connect[fuel_nodes_to_connect.isin(n.buses.index)].empty:
             print(f"Warning: None of the {fuel_export} buses exist!")
 
+    # create region fuel profile
     snapshots = pd.date_range(freq="h", **snakemake.params.snapshots)
+    ports_fuel_export_profil = ports_fuel_export_profil.squeeze()
+    ports_fuel_export_profil = pd.DataFrame([ports_fuel_export_profil] * len(snapshots), index=snapshots).astype(float)
 
-    ports_fuel_export_profil = ports_fuel_export_profil.squeeze()          # macht aus 1xN DataFrame eine Series (Index = Spaltennamen)
-
-    ports_fuel_export_profil = pd.DataFrame(
-        [ports_fuel_export_profil] * len(snapshots),                      # wiederholt automatisch pro Snapshot
-        index=snapshots                                  # setzt Zeitstempel als Index
-    ).astype(float)                                      # erzwingt Float-Datentyp
-
-    
-
-    n.add("Carrier", fuel_export + " fuel ship export")
-
+    # add load for fuel ship
     n.madd(
         "Load",
         fuel_nodes_to_connect + " fuel ship export",
@@ -827,7 +814,7 @@ if __name__ == "__main__":
     )
 
     # select and define nodes for export via port and shipping 
-    nodes_with_port = select_ports(n)
+    nodes_with_port, port_fraction = select_ports(n)
 
     # add export values and components to network for each export carrier
     for export_carrier in export_carriers:
@@ -844,7 +831,7 @@ if __name__ == "__main__":
         logger.info(f"Adding export for {export_carrier} with volume {export_volume} MWh "
                     f"and price {export_price} Currency/MWh")
 
-        add_export(n, export_carrier, export_volume, export_price, export_profile, nodes_with_port, costs, snakemake)
+        add_export(n, export_carrier, export_volume, export_price, export_profile, nodes_with_port, port_fraction, costs, snakemake)
 
 
 
