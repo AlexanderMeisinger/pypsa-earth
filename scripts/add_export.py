@@ -584,7 +584,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
             bus1=nodes_to_connect + " transport ship export",
             carrier=exp_carrier + " export",
             p_nom=1e7, 
-            efficiency=(1-shipping_data_transport.loc["boil-off", "value"]/100)**shipping_hour,
+            efficiency=(1-shipping_data_transport.loc["boil-off", "value"]/100)**shipping_hour, # Shipping hour enough?
         )
     
     # add store for ship transport
