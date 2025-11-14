@@ -760,8 +760,8 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
             * costs.at[co2_intensity_carrier[fuel_export], "CO2 intensity"]
         ).sum()
         co2 = co2 / 8760
-        snapshots = pd.date_range(freq="h", **snakemake.params.snapshots)
-        co2 = pd.Series(co2, index=snapshots)
+        #snapshots = pd.date_range(freq="h", **snakemake.params.snapshots)
+        #co2 = pd.Series(co2, index=snapshots)
 
         # add load for fuel ship emissions
         n.add(
