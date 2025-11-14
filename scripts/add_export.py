@@ -576,6 +576,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
     )
 
     # add export bus for ship transport
+    # Boil-off losses are only considered for the outward journey (Source: 10.1109/EEM64765.2025.11050281)
     n.madd(
             "Link",
             nodes_to_connect + " transport ship export",
@@ -583,21 +584,25 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
             bus1=nodes_to_connect + " transport ship export",
             carrier=exp_carrier + " export",
             p_nom=1e7, 
-            efficiency=(1-(shipping_data_transport.loc["boil-off", "value"]*shipping_route.duration_hours)), #ToDo: Improve efficiency and travel time (searoute)
-            #marginal_cost=-price,
+            efficiency=(1-shipping_data_transport.loc["boil-off", "value"]/100)**shipping_hour,
         )
     
-    # double check if this is already enough? May I have to change the bus?
-    ship_capacity = costs.loc[f"{shipping_index[exp_carrier]} transport ship", "capacity"]
+    # add store for ship transport
+    ship_capacity = shipping_data_transport.loc["capacity", "value"]
+    ships_required = get_ships_required(export_volume, ship_capacity, shipping_hour)
+    ship_lifetime = costs.lifetime.loc[f"{shipping_index[exp_carrier]} transport ship"]
+
     capital_cost = calculate_annuity(costs, discountrate).loc[f"{shipping_index[exp_carrier]} transport ship"]
-    
+    capital_cost = capital_cost/ship_capacity
     # Use this function also for add_export
     # ToDo: Check if port is available for this
-    ships_required = get_ships_required(export_volume, shipping_route, ship_capacity)
+    
+    n.add("Carrier", "export ship capacity investment")
 
-    n.add(
+    n.madd(
             "Store",
             nodes_to_connect + " transport ship export",
+            # double check if this is already enough? May I have to change the bus?
             bus=nodes_to_connect + " transport ship export",
             e_nom_extendable=True,
             # Ships may be starting at end of year and start deliver at the beginning of the year
@@ -606,9 +611,20 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, price):
             # Full capital cost of the ship
             capital_cost=capital_cost,
             # Additions that are not in TRACE
-            e_nom_min=costs.loc["capacity", "value"] * ships_required,
-            e_nom_max=costs.loc["capacity", "value"] * ships_required,
-            lifetime=costs.loc["lifetime", "value"],
+            e_nom_min=0,
+            e_nom_max=ship_capacity * ships_required,
+            lifetime=ship_lifetime,
+            carrier = "export ship capacity investment",
+            e_max_pu=0 # Store is used to reflect investment costs
+        )
+    
+    n.add(
+            "GlobalConstraint",
+            "export ship capacity investment",
+            type="tech_capacity_expansion_limit",
+            carrier_attribute="export ship capacity investment",
+            sense="==",
+            constant=ship_capacity*ships_required,
         )
 
     # Boil of or energy demand?
