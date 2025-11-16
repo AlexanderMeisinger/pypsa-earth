@@ -1070,6 +1070,7 @@ def define_spatial(nodes, options):
 
     spatial.nitrogen = SimpleNamespace()
     spatial.nitrogen.nodes = nodes + " N2"
+    spatial.nitrogen.locations = nodes
     
     spatial.ammonia = SimpleNamespace()
     spatial.ammonia.nodes = nodes + " NH3"
