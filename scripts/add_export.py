@@ -425,9 +425,11 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
                     nodes_to_connect + " export",
                     bus0=nodes_to_connect,
                     bus1=exp_carrier + " export",
+                    bus2="co2 atmosphere",
                     carrier=exp_carrier + " export",
                     p_nom=1e7, 
                     efficiency=1,
+                    efficiency2=co2_intensity, # ToDo: negativ?
                     marginal_cost=-price,
                 )
 
@@ -482,10 +484,10 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
             carrier=exp_carrier + " export",
             p_set=profile,
         )
-    else: 
-        raise ValueError(
-            f"Value {snakemake.params.export_endogenous} for ['export']['endogenous'] must be true or false."
-        )
+    #else: 
+    #    raise ValueError(
+    #        f"Value {snakemake.params.export_endogenous} for ['export']['endogenous'] must be true or false."
+    #    )
 
     # add store at export bus depending on config settings
     if snakemake.params.export_destination_carrier == False:
@@ -843,7 +845,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
     if export_destination_carrier == "H2":
         n.add("Carrier", export_destination_carrier + " destination carrier export")
 
-        n.madd(
+        n.add(
             "Bus",
             export_destination_carrier + " destination carrier export",
             carrier=export_destination_carrier + " destination carrier export",
@@ -852,7 +854,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
 
         if exp_carrier == "LH2":
             # Source: 10.1109/EEM64765.2025.11050281
-            n.madd(
+            n.add(
                 "Link",
                 exp_carrier,
                 suffix=" evaporation export",
