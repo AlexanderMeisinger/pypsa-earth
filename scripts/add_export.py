@@ -279,6 +279,7 @@ def get_ships_required(export_volume, ship_capacity, shipping_hour):
 
     max_transport = ship_capacity * 8760 / (fill_time + travel_time + unload_time)
 
+    # ToDo: consideration of loses since export volume is the end product
     ships_required = np.ceil(export_volume / max_transport)
 
     return ships_required
@@ -516,6 +517,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
                 "are not valid!"
             )
 
+        # ToDo: No store at export habour anymore
         n.add("Carrier", exp_carrier + " export Store")
 
         n.add(
@@ -617,7 +619,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
         bus0=nodes_to_connect,
         bus1=nodes_to_connect + " load ship export",
         carrier=exp_carrier + " export",
-        p_nom_extendable=True, 
+        p_nom=1e7,
         efficiency=1-shipping_data_transport.loc["(un-) loading losses", "value"]/100,
     )
 
