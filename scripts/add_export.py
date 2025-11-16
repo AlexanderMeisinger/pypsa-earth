@@ -658,41 +658,57 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
     
     # add store for ship transport
     # get ship transport data
-    ship_capacity = shipping_data_transport.loc["capacity", "value"]
-    ships_required = get_ships_required(export_volume, ship_capacity, shipping_hour)
-    ship_lifetime = costs.lifetime.loc[f"{shipping_index[exp_carrier]} transport ship"]
+    #ship_capacity = shipping_data_transport.loc["capacity", "value"]
+    #ships_required = get_ships_required(export_volume, ship_capacity, shipping_hour)
+    #ship_lifetime = costs.lifetime.loc[f"{shipping_index[exp_carrier]} transport ship"]
 
-    capital_cost = calculate_annuity(costs, discountrate).loc[f"{shipping_index[exp_carrier]} transport ship"]
-    capital_cost = capital_cost/ship_capacity
-
-    # add carrier for considering ships as store (global constraint)
-    n.add("Carrier", "export ship capacity investment")
-
-    # add export store as ship
-    n.madd(
-            "Store",
-            nodes_to_connect + " transport ship export",
-            bus=nodes_to_connect + " transport ship export",
-            e_nom_extendable=True,
-            e_cyclic=True,
-            capital_cost=capital_cost, # Full capital cost of the ship
-            e_nom_min=0,
-            e_nom_max=ship_capacity * ships_required.max(),
-            lifetime=ship_lifetime,
-            carrier = "export ship capacity investment",
-            e_max_pu=0 # Store is used to reflect investment costs
-        )
+    #capital_cost = calculate_annuity(costs, discountrate).loc[f"{shipping_index[exp_carrier]} transport ship"] # Unit: €
+    #capital_cost = capital_cost/ship_capacity # Unit: €/MWh
     
-    # add global constraint in order gurantee enough ship investments (endogenous: region)
-    n.add(
-            "GlobalConstraint",
-            "export_ship_capacity_investment",
-            type="tech_capacity_expansion_limit",
-            carrier_attribute="export ship capacity investment",
-            sense="==",
-            constant=ship_capacity*ships_required.max(),
-        )
+    # add carrier for considering ships as store (global constraint)
+    #n.add("Carrier", "export_ship_capacity_investment")
+    
+    # add export store as ship
+    # option 1
+    #n.add(
+    #        "Store",
+    #        nodes_to_connect[0] + " transport ship export",
+    #        bus=nodes_to_connect[0] + " transport ship export",
+    #        e_nom_extendable=True,
+    #        e_cyclic=True,
+    #        capital_cost=capital_cost, # Full capital cost of the ship
+    #        e_nom_min=ship_capacity * ships_required.max(),
+    #        e_nom_max=ship_capacity * ships_required.max(),
+    #        lifetime=ship_lifetime,
+    #        carrier = "export_ship_capacity_investment",
+    #        e_max_pu=0 # Store is used to reflect investment costs
+    #    )
+    
+    # option 2
+    #n.madd(
+    #        "Store",
+    #        nodes_to_connect + " transport ship export",
+    #        bus=nodes_to_connect + " transport ship export",
+    #        e_nom_extendable=True,
+    #        e_cyclic=True,
+    #        capital_cost=capital_cost, # Full capital cost of the ship
+    #        e_nom_min=0,
+    #        e_nom_max=ship_capacity * ships_required.max(),
+    #        lifetime=ship_lifetime,
+    #        carrier = "export_ship_capacity_investment",
+    #        e_max_pu=0 # Store is used to reflect investment costs
+    #    )
 
+    # add global constraint in order gurantee enough ship investments (endogenous: region)
+    #n.add(
+    #        "GlobalConstraint",
+    #        "export_ship_capacity_investment",
+    #        type="tech_capacity_expansion_limit",
+    #        carrier_attribute="export_ship_capacity_investment",
+    #        sense="==",
+    #        constant=ship_capacity * ships_required.max(),
+    #    )
+    
 
     # create export profile
     # assumptions: 
@@ -718,6 +734,10 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
         carrier=fuel_export + " fuel ship export",
         location=nodes_to_connect
     )
+
+    # determine required amount of ships
+    ship_capacity = shipping_data_transport.loc["capacity", "value"]
+    ships_required = get_ships_required(export_volume, ship_capacity, shipping_hour)
 
     # determine regional fuel amount based on port fraction
     ports_fuel_export_demand = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * 2 * shipping_distance).T # Double check conversion
@@ -789,20 +809,45 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
         bus0=nodes_to_connect + " transport ship export",
         bus1=nodes_to_connect + " unload ship export",
         carrier=exp_carrier + " export",
-        p_nom_extenable=True, 
+        p_nom=1e7, 
         efficiency=1-shipping_data_transport.loc["(un-) loading losses", "value"]/100,
     )
-    
+
+    # consider costs for shipping
+    # add bus for ship costs
+    n.madd(
+        "Bus",
+        nodes_to_connect + " costs ship export",
+        carrier=exp_carrier + " export",
+        location=nodes_to_connect
+    )
+
+    # determine ship investment costs based on export volume
+    capital_cost = calculate_annuity(costs, discountrate).loc[f"{shipping_index[exp_carrier]} transport ship"] # Unit: €
+    capital_cost = capital_cost * ships_required.max() / export_volume  # Unit: €/MWh # Change ships_required based on ports
+
+    # add export link for ship costs
+    n.madd(
+        "Link",
+        nodes_to_connect + " costs ship export",
+        bus0=nodes_to_connect + " unload ship export",
+        bus1=nodes_to_connect + " costs ship export",
+        carrier=exp_carrier + " export",
+        p_nom=1e7, 
+        efficiency=1,
+        marginal_cost=capital_cost, #ToDo: Rename label
+    )
+
     # add export link for import port
     n.madd(
         "Link",
         nodes_to_connect + " export",
-        bus0=nodes_to_connect + " unload ship export",
+        bus0=nodes_to_connect + " costs ship export",
         bus1=exp_carrier + " export",
         carrier=exp_carrier + " export",
         p_nom=1e7, 
         efficiency=1,
-        marginal_cost=-price,
+        marginal_cost=-price, #ToDo: adapt marginal_cost with export conversion
     )
     
 
