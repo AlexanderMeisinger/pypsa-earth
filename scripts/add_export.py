@@ -733,7 +733,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
     ports_fuel_export_demand = ports_fuel_export_demand * ships_required.max() * (port_fraction/port_fraction.sum())
 
     # adjust port bus in accordance to fuel carrier
-    if fuel_export == ["LH2", "NH3", "MeOH"]:
+    if fuel_export == "export_carrier":
         fuel_nodes_to_connect = nodes_to_connect
     elif fuel_export == "oil":
         fuel_nodes_to_connect = nodes_to_connect.str.replace(exp_carrier, fuel_export)
