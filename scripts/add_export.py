@@ -528,7 +528,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
     Add cross-border export infrastructure for ship-based energy exports.
 
     This function builds a complete export chain for an energy carrier by ship 
-    (e.g. LH2, NH3, MeOH, oil) including:
+    (e.g. LH2, NH3, MEOH, oil) including:
     - loading infrastructure,
     - ship transport including boil-off losses,
     - fuel consumption of the ships,
@@ -539,7 +539,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
     Parameters
     ----------
     exp_carrier : str
-        Exported energy carrier (e.g. "LH2", "NH3", "MeOH").
+        Exported energy carrier (e.g. "LH2", "NH3", "MEOH").
         Used for naming buses, links, carriers, and selecting ship data.
 
     nodes_to_connect : pandas.Index or pandas.Series
@@ -572,7 +572,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
     shipping_index = {
         "LH2": "H2 (l)",
         "NH3": "NH3 (l)",
-        "MeOH": "MeOH",
+        "MEOH": "MeOH",
         "oil": "FT"
     }
 
@@ -584,7 +584,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
         shipping_data_fuel = shipping_data.loc["FT fuel transport ship"]
         shipping_data_fuel = shipping_data_fuel.set_index("variable")
     else: 
-        fuel_export == exp_carrier
+        fuel_export = exp_carrier
         shipping_data_fuel=shipping_data_transport
 
     # determine shipping route
@@ -733,7 +733,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
     ports_fuel_export_demand = ports_fuel_export_demand * ships_required.max() * (port_fraction/port_fraction.sum())
 
     # adjust port bus in accordance to fuel carrier
-    if fuel_export == "export_carrier":
+    if fuel_export in ["LH2", "NH3", "MEOH"]:
         fuel_nodes_to_connect = nodes_to_connect
     elif fuel_export == "oil":
         fuel_nodes_to_connect = nodes_to_connect.str.replace(exp_carrier, fuel_export)
@@ -758,11 +758,11 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
     )
 
     # consider emissions from fuel ship
-    if fuel_export in ["oil", "MeOH"]:
+    if fuel_export in ["oil", "MEOH"]:
         # match label from costs
         co2_intensity_carrier = {
             "oil": "oil",
-            "MeOH": "methanol"
+            "MEOH": "methanol"
         }
 
         # identify emissions due to fuel ship
@@ -856,8 +856,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
             # Source: 10.1109/EEM64765.2025.11050281
             n.add(
                 "Link",
-                exp_carrier,
-                suffix=" evaporation export",
+                exp_carrier + " evaporation export",
                 bus0=exp_carrier + " export",
                 bus1=export_destination_carrier + " destination carrier export",
                 p_nom_extendable=True,
@@ -871,8 +870,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
             # Source: pypsa-eur
             n.add(
                 "Link",
-                exp_carrier,
-                suffix=" ammonia cracker export",
+                exp_carrier + " ammonia cracker export",
                 bus0=exp_carrier + " export",
                 bus1=export_destination_carrier + " destination carrier export",
                 p_nom_extendable=True,
@@ -882,15 +880,14 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
                 / costs.at["Ammonia cracker", "ammonia-input"],  # given per MW_H2
                 lifetime=costs.at["Ammonia cracker", "lifetime"],
             )
-        elif exp_carrier == "MeOH":
+        elif exp_carrier == "MEOH":
             # Source: pypsa-eur
             tech = "Methanol steam reforming"
             capital_cost = costs.at[tech, "fixed"] / costs.at[tech, "methanol-input"]
 
             n.add(
                 "Link",
-                exp_carrier,
-                suffix=f" {tech}",
+                exp_carrier + f" {tech}",
                 bus0=exp_carrier + " export",
                 bus1=export_destination_carrier + " destination carrier export",
                 bus2="co2 atmosphere",
@@ -970,7 +967,7 @@ if __name__ == "__main__":
             sopts="144H",
             discountrate=0.071,
             demand="NZ",
-            eopts="NH3v75",
+            eopts="MEOHv75",
             configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.MA_2050.yaml",
         )
 
