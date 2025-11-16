@@ -380,7 +380,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
                     f"with price {price}")
         
         if snakemake.params.export_crossborder:
-            add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price)
+            add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, profile)
         else:
             n.madd(
                     "Link",
@@ -431,7 +431,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
         #)
 
         if snakemake.params.export_crossborder:
-            add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price)
+            add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, profile)
         else:
             n.madd(
                     "Link",
@@ -455,7 +455,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
     #   1. a negative generator is added, 
     #   2. a global constraint is added if volume is not ".inf"
     # If endogenous export is false, an exogenous load with a profile is added.  
-    if snakemake.params.export_endogenous:
+    if snakemake.params.export_endogenous == True and snakemake.params.export_destination_carrier == False:
         # add endogenous export by implementing a negative generation
         n.add(
             "Generator",
@@ -478,7 +478,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
                 constant=-volume,
             )
 
-    elif snakemake.params.export_endogenous is False:
+    elif snakemake.params.export_endogenous is False and snakemake.params.export_destination_carrier == False:
         if volume == np.inf or volume == 0:
             raise ValueError(
                 f"Value {volume} for ['export']['volume'] is not valid. "
@@ -501,40 +501,40 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
         )
 
     # add store at export bus depending on config settings
-    config_store = snakemake.params.export_store
-    config_store_costs = snakemake.params.export_store_capital_costs
+    if snakemake.params.export_destination_carrier == False:
+        config_store = snakemake.params.export_store
+        config_store_costs = snakemake.params.export_store_capital_costs
 
-    if config_store == True:
-        if config_store_costs == "no_costs":
-            capital_cost = 0
-        elif config_store_costs == "standard_costs" and exp_carrier == "H2":
-            capital_cost = costs.at[
-                "hydrogen storage tank type 1 including compressor", "fixed"
-            ]
-        else:
-            raise ValueError(
-                f"Combination of values for export_store and export_store_capital_costs ({config_store_costs}, {exp_carrier}) "
-                "are not valid!"
+        if config_store == True:
+            if config_store_costs == "no_costs":
+                capital_cost = 0
+            elif config_store_costs == "standard_costs" and exp_carrier == "H2":
+                capital_cost = costs.at[
+                    "hydrogen storage tank type 1 including compressor", "fixed"
+                ]
+            else:
+                raise ValueError(
+                    f"Combination of values for export_store and export_store_capital_costs ({config_store_costs}, {exp_carrier}) "
+                    "are not valid!"
+                )
+
+            n.add("Carrier", exp_carrier + " export Store")
+
+            n.add(
+                "Store",
+                exp_carrier + " export Store",
+                bus=exp_carrier + " export",
+                e_nom_extendable=True,
+                carrier=exp_carrier + " export Store",
+                marginal_cost=0,
+                capital_cost=capital_cost,
+                e_cyclic=True,
             )
-
-        # ToDo: No store at export habour anymore
-        n.add("Carrier", exp_carrier + " export Store")
-
-        n.add(
-            "Store",
-            exp_carrier + " export Store",
-            bus=exp_carrier + " export",
-            e_nom_extendable=True,
-            carrier=exp_carrier + " export Store",
-            marginal_cost=0,
-            capital_cost=capital_cost,
-            e_cyclic=True,
-        )
 
     return
 
 
-def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
+def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, profile):
     """
     Add cross-border export infrastructure for ship-based energy exports.
 
@@ -849,7 +849,77 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price):
         efficiency=1,
         marginal_cost=-price, #ToDo: adapt marginal_cost with export conversion
     )
-    
+
+    # add export conversion for import port
+    # add export conversion carrier and bus for import port
+    export_destination_carrier = snakemake.params.export_destination_carrier
+    if export_destination_carrier == "H2":
+        n.add("Carrier", export_destination_carrier + " destination carrier export")
+
+        n.madd(
+            "Bus",
+            export_destination_carrier + " destination carrier export",
+            carrier=export_destination_carrier + " destination carrier export",
+            # add location
+        )
+
+        if exp_carrier == "LH2":
+            # Source: 10.1109/EEM64765.2025.11050281
+            n.madd(
+                "Link",
+                exp_carrier,
+                suffix=" evaporation export",
+                bus0=exp_carrier + " export",
+                bus1=export_destination_carrier + " destination carrier export",
+                p_nom_extendable=True,
+                carrier=export_destination_carrier + " destination carrier export",
+                efficiency=1, # Source: "Heuser et al. 2019: https://doi.org/10.1016/j.ijhydene.2018.12.156, table 1; 10.1109/EEM64765.2025.11050281
+                # Assumption: Electricity consumption neglected
+                capital_cost=costs.at["H2 evaporation", "fixed"] / 1, 
+                lifetime=costs.at["H2 evaporation", "lifetime"],
+            )
+        elif exp_carrier == "NH3":
+            # Source: pypsa-eur
+            n.add(
+                "Link",
+                exp_carrier,
+                suffix=" ammonia cracker export",
+                bus0=exp_carrier + " export",
+                bus1=export_destination_carrier + " destination carrier export",
+                p_nom_extendable=True,
+                carrier=export_destination_carrier + " destination carrier export",
+                efficiency=1 / costs.at["Ammonia cracker", "ammonia-input"],
+                capital_cost=costs.at["Ammonia cracker", "fixed"]
+                / costs.at["Ammonia cracker", "ammonia-input"],  # given per MW_H2
+                lifetime=costs.at["Ammonia cracker", "lifetime"],
+            )
+        elif exp_carrier == "MeOH":
+            # Source: pypsa-eur
+            tech = "Methanol steam reforming"
+            capital_cost = costs.at[tech, "fixed"] / costs.at[tech, "methanol-input"]
+
+            n.add(
+                "Link",
+                exp_carrier,
+                suffix=f" {tech}",
+                bus0=exp_carrier + " export",
+                bus1=export_destination_carrier + " destination carrier export",
+                bus2="co2 atmosphere",
+                p_nom_extendable=True,
+                capital_cost=capital_cost,
+                efficiency=1 / costs.at[tech, "methanol-input"],
+                efficiency2=-costs.at["methanolisation", "carbondioxide-input"],
+                carrier=export_destination_carrier + " destination carrier export",
+                lifetime=costs.at[tech, "lifetime"],
+            )
+
+        n.add(
+                "Load",
+                export_destination_carrier + " destination carrier export",
+                bus=export_destination_carrier + " destination carrier export",
+                carrier=export_destination_carrier + " destination carrier export",
+                p_set=profile,
+            )
 
 
 def create_export_profile(export_volume, export_type="constant"):
