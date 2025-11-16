@@ -1171,6 +1171,7 @@ rule add_export:
         export_ship_fuel=config["export"]["export_crossborder"]["ship_fuel"],
         export_ship_fill_time=config["export"]["export_crossborder"]["ship_fill_time"],
         export_ship_unload_time=config["export"]["export_crossborder"]["ship_unload_time"],
+        export_destination_carrier=config["export"]["export_crossborder"]["destination_carrier"],
         snapshots=config["snapshots"],
         costs=config["costs"],
     input:
