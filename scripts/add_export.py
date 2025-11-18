@@ -877,7 +877,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
         nodes_to_connect + " crossborder export",
         bus0=nodes_to_connect + " costs ship export",
         bus1=exp_carrier + " crossborder export",
-        carrier=exp_carrier + "export",
+        carrier=exp_carrier + " export",
         p_nom=1e7, 
         efficiency=1,
         marginal_cost=-price, #ToDo: adapt marginal_cost with export conversion
