@@ -964,13 +964,13 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
                 carrier=export_destination_carrier + " destination carrier export",
             )
 
-        n.add(
-                "Load",
-                export_destination_carrier + " destination carrier export",
-                bus=export_destination_carrier + " destination carrier export",
-                carrier=export_destination_carrier + " destination carrier export",
-                p_set=profile,
-            )
+    n.add(
+            "Load",
+            export_destination_carrier + " destination carrier export",
+            bus=export_destination_carrier + " destination carrier export",
+            carrier=export_destination_carrier + " destination carrier export",
+            p_set=profile,
+        )
 
 
 def create_export_profile(export_volume, export_type="constant"):
