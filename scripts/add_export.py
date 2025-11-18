@@ -934,11 +934,11 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
                 exp_carrier + f" {tech}",
                 bus0=exp_carrier + " crossborder export",
                 bus1=export_destination_carrier + " destination carrier export",
-                bus2="co2 atmosphere",
+                #bus2="co2 atmosphere", # already considered
                 p_nom_extendable=True,
                 capital_cost=capital_cost,
                 efficiency=1 / costs.at[tech, "methanol-input"],
-                efficiency2=-costs.at["methanolisation", "carbondioxide-input"],
+                #efficiency2=costs.at["methanolisation", "carbondioxide-input"], # already considered
                 carrier=export_destination_carrier + " destination carrier export",
                 lifetime=costs.at[tech, "lifetime"],
             )
