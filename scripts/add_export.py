@@ -444,7 +444,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
     #   1. a negative generator is added, 
     #   2. a global constraint is added if volume is not ".inf"
     # If endogenous export is false, an exogenous load with a profile is added.  
-    if snakemake.params.export_endogenous == True and snakemake.params.export_destination_carrier == False:
+    if snakemake.params.export_endogenous == True and snakemake.params.export_crossborder == False:
         # add endogenous export by implementing a negative generation
         n.add(
             "Generator",
@@ -467,7 +467,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
                 constant=-volume,
             )
 
-    elif snakemake.params.export_endogenous is False and snakemake.params.export_destination_carrier == False:
+    elif snakemake.params.export_endogenous == False and snakemake.params.export_crossborder == False:
         if volume == np.inf or volume == 0:
             raise ValueError(
                 f"Value {volume} for ['export']['volume'] is not valid. "
@@ -490,7 +490,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
     #    )
 
     # add store at export bus depending on config settings
-    if snakemake.params.export_destination_carrier == False:
+    if snakemake.params.export_destination_carrier == False and snakemake.params.export_crossborder == False:
         config_store = snakemake.params.export_store
         config_store_costs = snakemake.params.export_store_capital_costs
 
