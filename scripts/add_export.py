@@ -380,6 +380,23 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
                     f"with price {price}")
         
         if snakemake.params.export_crossborder:
+            n.madd(
+                "Bus",
+                nodes_to_connect + " export",
+                carrier=exp_carrier + " export",
+                #location
+            )
+
+            n.madd(
+                    "Link",
+                    nodes_to_connect + " export",
+                    bus0=nodes_to_connect,
+                    bus1=nodes_to_connect + " export",
+                    carrier=exp_carrier + " export",
+                    p_nom=1e7, 
+                    efficiency=1,
+                )
+
             add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, profile)
         else:
             n.madd(
@@ -418,6 +435,25 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
         
 
         if snakemake.params.export_crossborder:
+            n.madd(
+                "Bus",
+                nodes_to_connect + " export",
+                carrier=exp_carrier + " export",
+                #location
+            )
+            
+            n.madd(
+                    "Link",
+                    nodes_to_connect + " export",
+                    bus0=nodes_to_connect,
+                    bus1=nodes_to_connect + " export",
+                    bus2="co2 atmosphere",
+                    carrier=exp_carrier + " export",
+                    p_nom=1e7, 
+                    efficiency=1,
+                    efficiency2=co2_intensity, # ToDo: negativ?
+                )
+
             add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, profile)
         else:
             n.madd(
@@ -605,7 +641,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
     n.madd(
         "Link",
         nodes_to_connect + " load ship export",
-        bus0=nodes_to_connect,
+        bus0=nodes_to_connect + " export",
         bus1=nodes_to_connect + " load ship export",
         carrier=exp_carrier + " export",
         p_nom=1e7,
@@ -827,13 +863,21 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
         marginal_cost=capital_cost, #ToDo: Rename label
     )
 
+    # add export bus for import port
+    n.add(
+        "Bus",
+        exp_carrier + " crossborder export",
+        carrier=exp_carrier + " export",
+        location=nodes_to_connect
+    )
+
     # add export link for import port
     n.madd(
         "Link",
-        nodes_to_connect + " export",
+        nodes_to_connect + " crossborder export",
         bus0=nodes_to_connect + " costs ship export",
-        bus1=exp_carrier + " export",
-        carrier=exp_carrier + " export",
+        bus1=exp_carrier + " crossborder export",
+        carrier=exp_carrier + "export",
         p_nom=1e7, 
         efficiency=1,
         marginal_cost=-price, #ToDo: adapt marginal_cost with export conversion
@@ -857,7 +901,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
             n.add(
                 "Link",
                 exp_carrier + " evaporation export",
-                bus0=exp_carrier + " export",
+                bus0=exp_carrier + " crossborder export",
                 bus1=export_destination_carrier + " destination carrier export",
                 p_nom_extendable=True,
                 carrier=export_destination_carrier + " destination carrier export",
@@ -871,7 +915,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
             n.add(
                 "Link",
                 exp_carrier + " ammonia cracker export",
-                bus0=exp_carrier + " export",
+                bus0=exp_carrier + " crossborder export",
                 bus1=export_destination_carrier + " destination carrier export",
                 p_nom_extendable=True,
                 carrier=export_destination_carrier + " destination carrier export",
@@ -888,7 +932,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
             n.add(
                 "Link",
                 exp_carrier + f" {tech}",
-                bus0=exp_carrier + " export",
+                bus0=exp_carrier + " crossborder export",
                 bus1=export_destination_carrier + " destination carrier export",
                 bus2="co2 atmosphere",
                 p_nom_extendable=True,
@@ -897,6 +941,27 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
                 efficiency2=-costs.at["methanolisation", "carbondioxide-input"],
                 carrier=export_destination_carrier + " destination carrier export",
                 lifetime=costs.at[tech, "lifetime"],
+            )
+    else: 
+        export_destination_carrier = exp_carrier
+
+        n.add("Carrier", export_destination_carrier + " destination carrier export")
+
+        n.add(
+            "Bus",
+            export_destination_carrier + " destination carrier export",
+            carrier=export_destination_carrier + " destination carrier export",
+            # add location
+        )
+
+        n.add(
+                "Link",
+                exp_carrier + f" destination carrier export",
+                bus0=exp_carrier + " crossborder export",
+                bus1=export_destination_carrier + " destination carrier export",
+                p_nom=1e7, 
+                efficiency=1,
+                carrier=export_destination_carrier + " destination carrier export",
             )
 
         n.add(
