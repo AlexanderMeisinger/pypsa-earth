@@ -905,9 +905,9 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
                 bus1=export_destination_carrier + " destination carrier export",
                 p_nom_extendable=True,
                 carrier=export_destination_carrier + " destination carrier export",
-                efficiency=1, # Source: "Heuser et al. 2019: https://doi.org/10.1016/j.ijhydene.2018.12.156, table 1; 10.1109/EEM64765.2025.11050281
+                efficiency= 1 / export_reconversion_LH2_H2, # Source: "Heuser et al. 2019: https://doi.org/10.1016/j.ijhydene.2018.12.156, table 1; 10.1109/EEM64765.2025.11050281
                 # Assumption: Electricity consumption neglected
-                capital_cost=costs.at["H2 evaporation", "fixed"] / 1, 
+                capital_cost=costs.at["H2 evaporation", "fixed"] / export_reconversion_LH2_H2, 
                 lifetime=costs.at["H2 evaporation", "lifetime"],
             )
         elif exp_carrier == "NH3":
@@ -919,9 +919,9 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
                 bus1=export_destination_carrier + " destination carrier export",
                 p_nom_extendable=True,
                 carrier=export_destination_carrier + " destination carrier export",
-                efficiency=1 / costs.at["Ammonia cracker", "ammonia-input"],
+                efficiency=1 / export_reconversion_NH3_H2,
                 capital_cost=costs.at["Ammonia cracker", "fixed"]
-                / costs.at["Ammonia cracker", "ammonia-input"],  # given per MW_H2
+                / export_reconversion_NH3_H2,  # given per MW_H2
                 lifetime=costs.at["Ammonia cracker", "lifetime"],
             )
         elif exp_carrier == "MEOH":
@@ -931,16 +931,16 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
 
             n.add(
                 "Link",
-                exp_carrier + f" {tech}",
+                exp_carrier + "Methanol steam reforming",
                 bus0=exp_carrier + " crossborder export",
                 bus1=export_destination_carrier + " destination carrier export",
                 #bus2="co2 atmosphere", # already considered
                 p_nom_extendable=True,
-                capital_cost=capital_cost,
-                efficiency=1 / costs.at[tech, "methanol-input"],
+                capital_cost=costs.at["Methanol steam reforming", "fixed"] / export_reconversion_MeOH_H2,
+                efficiency=1 / export_reconversion_MeOH_H2,
                 #efficiency2=costs.at["methanolisation", "carbondioxide-input"], # already considered
                 carrier=export_destination_carrier + " destination carrier export",
-                lifetime=costs.at[tech, "lifetime"],
+                lifetime=costs.at["Methanol steam reforming", "lifetime"],
             )
     else: 
         export_destination_carrier = exp_carrier
@@ -1066,6 +1066,11 @@ if __name__ == "__main__":
 
     # select and define nodes for export via port and shipping 
     nodes_with_port, port_fraction = select_ports(n)
+
+    # consideration of reconversion
+    export_reconversion_LH2_H2 = snakemake.params.export_reconversion_LH2_H2 # MWh_LH2/MWh_H2
+    export_reconversion_NH3_H2 = snakemake.params.export_reconversion_NH3_H2 # MWh_NH3/MWh_H2
+    export_reconversion_MeOH_H2 = snakemake.params.export_reconversion_MEOH_H2 # MWh_MeOH/MWh_H2
 
     # add export values and components to network for each export carrier
     for export_carrier in export_carriers:

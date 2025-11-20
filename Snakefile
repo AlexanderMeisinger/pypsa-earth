@@ -1172,6 +1172,9 @@ rule add_export:
         export_ship_fill_time=config["export"]["export_crossborder"]["ship_fill_time"],
         export_ship_unload_time=config["export"]["export_crossborder"]["ship_unload_time"],
         export_destination_carrier=config["export"]["export_crossborder"]["destination_carrier"],
+        export_reconversion_LH2_H2=config["export"]["export_crossborder"]["MWh_LH2_per_MWh_H2"],
+        export_reconversion_NH3_H2=config["export"]["export_crossborder"]["MWh_NH3_per_MWh_H2"],
+        export_reconversion_MEOH_H2=config["export"]["export_crossborder"]["MWh_MEOH_per_MWh_H2"],
         snapshots=config["snapshots"],
         costs=config["costs"],
     input:
