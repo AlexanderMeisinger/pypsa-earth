@@ -1031,15 +1031,15 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "add_export",
             simpl="",
-            clusters="6",
+            clusters="12",
             ll="vopt",
-            opts="Co2L0.05-144H",
-            planning_horizons="2030",
+            opts="Co2L0.27-144H",
+            planning_horizons="2050",
             sopts="144H",
-            discountrate=0.071,
+            discountrate=0.09,
             demand="NZ",
-            eopts="MEOHv25",
-            configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.KE_2030.yaml",
+            eopts="NH3v25",
+            configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.MA_2050.yaml",
         )
 
     overrides = override_component_attrs(snakemake.input.overrides)

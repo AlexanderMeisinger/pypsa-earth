@@ -3433,14 +3433,14 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "prepare_sector_network",
             simpl="",
-            clusters="5",
+            clusters="12",
             ll="vopt",
             opts="Co2L0.27-144H",
             planning_horizons="2050",
             sopts="144H",
-            discountrate=0.071,
+            discountrate=0.09,
             demand="NZ",
-            eopts="LH2v75",
+            eopts="MEOHv50",
             configfile="/home/alex-charly/SSD/H2GMA/Github/AP10/analyse-h2g-a-ap10/config/supply-scenarios/config.MA_2050.yaml",
         )
 
