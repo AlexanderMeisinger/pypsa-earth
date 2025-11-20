@@ -883,7 +883,11 @@ def add_ammonia(n, costs):
         carrier="NH3",
     )
     
-    eff = 1 / costs.at["Haber-Bosch", "electricity-input"]
+    eff = 1 / costs.at["Haber-Bosch", "electricity-input"] # MWh_NH3/MWh_el
+    # hydrogen-input: MWh_H2/MWh_NH3 * 
+    # nitrogen-input: t_N2/MWh_NH3
+    # electricity-input: MWh_el/MWh_NH3
+    # investment: EUR/kW_NH3
     n.madd(
         "Link",
         spatial.nodes,
@@ -1563,13 +1567,13 @@ def add_methanol(n, costs):
         bus0=spatial.nodes + " H2",
         bus1=spatial.methanol.nodes,
         bus2=spatial.co2.nodes,
+        buse3=spatial.nodes,
         p_nom_extendable=True,
         carrier="methanolisation",
-        efficiency=costs.at["methanolisation", "efficiency"],
-        efficiency2=-costs.at["methanolisation", "efficiency"]
-        * costs.at["methanol", "CO2 intensity"],
-        capital_cost=costs.at["methanolisation", "fixed"]
-        * costs.at["methanolisation", "efficiency"],
+        efficiency=1 / costs.at["methanolisation", "hydrogen-input"],
+        efficiency2=-costs.at["methanol", "CO2 intensity"] * 1 / costs.at["methanolisation", "hydrogen-input"],
+        efficiency3=-costs.at["methanolisation", "electricity-input"] * 1 / costs.at["methanolisation", "hydrogen-input"],
+        capital_cost=costs.at["methanolisation", "fixed"] * 1 / costs.at["methanolisation", "hydrogen-input"],
         lifetime=costs.at["methanolisation", "lifetime"],
     )
 
