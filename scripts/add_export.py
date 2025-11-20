@@ -910,6 +910,9 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
                 capital_cost=costs.at["H2 evaporation", "fixed"] / export_reconversion_LH2_H2, 
                 lifetime=costs.at["H2 evaporation", "lifetime"],
             )
+
+            profile = profile / export_reconversion_LH2_H2
+
         elif exp_carrier == "NH3":
             # Source: pypsa-eur
             n.add(
@@ -917,6 +920,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
                 exp_carrier + " ammonia cracker export",
                 bus0=exp_carrier + " crossborder export",
                 bus1=export_destination_carrier + " destination carrier export",
+                # Assumption: electricity assumption neglected
                 p_nom_extendable=True,
                 carrier=export_destination_carrier + " destination carrier export",
                 efficiency=1 / export_reconversion_NH3_H2,
@@ -924,11 +928,10 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
                 / export_reconversion_NH3_H2,  # given per MW_H2
                 lifetime=costs.at["Ammonia cracker", "lifetime"],
             )
-        elif exp_carrier == "MEOH":
-            # Source: pypsa-eur
-            tech = "Methanol steam reforming"
-            capital_cost = costs.at[tech, "fixed"] / costs.at[tech, "methanol-input"]
 
+            profile = profile / export_reconversion_NH3_H2
+
+        elif exp_carrier == "MEOH":
             n.add(
                 "Link",
                 exp_carrier + "Methanol steam reforming",
@@ -942,6 +945,9 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
                 carrier=export_destination_carrier + " destination carrier export",
                 lifetime=costs.at["Methanol steam reforming", "lifetime"],
             )
+
+            profile = profile / export_reconversion_MeOH_H2
+
     else: 
         export_destination_carrier = exp_carrier
 
@@ -1074,7 +1080,15 @@ if __name__ == "__main__":
 
     # add export values and components to network for each export carrier
     for export_carrier in export_carriers:
-        export_volume = export_volumes[export_carrier]
+        if snakemake.params.export_destination_carrier:
+            if export_carrier == "LH2":
+                export_volume = export_volumes[export_carrier] * export_reconversion_LH2_H2
+            elif export_carrier == "NH3":
+                export_volume = export_volumes[export_carrier] * export_reconversion_NH3_H2
+            elif export_carrier == "MEOH":
+                export_volume = export_volumes[export_carrier] * export_reconversion_MeOH_H2
+        else:
+            export_volume = export_volumes[export_carrier]
         export_price = export_prices[export_carrier]
         logger.info(
             f"Creating export profile for {export_carrier}: "
