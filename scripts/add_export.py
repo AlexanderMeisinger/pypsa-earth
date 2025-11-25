@@ -259,13 +259,8 @@ def get_shipping_route(origin, destination):
     ports_fuel_export.y = n.buses.loc[nodes_with_port].lat
     
     # Source searoutes: 10.1109/EEM64765.2025.11050281
-    # ToDo: Double check searoutes
     for i in ports_fuel_export.index:
         ports_fuel_export.loc[i, "distance"] = sr.searoute([ports_fuel_export.loc[i, "x"], ports_fuel_export.loc[i, "y"]], destination)["properties"]["length"] 
-
-    # ToDo: Double check restrictions for other countries beyond MA
-    # ToDo: Adapt country iso code
-    #route = sr.searoute(origin, destination, append_orig_dest=True, restrictions=['northwest'], include_ports=True, port_params={'only_terminals':True, 'country_pol': "MA", 'country_pod' : "NL"})
 
     shipping_route = ports_fuel_export
 
@@ -279,7 +274,6 @@ def get_ships_required(export_volume, ship_capacity, shipping_hour):
 
     max_transport = ship_capacity * 8760 / (fill_time + travel_time + unload_time)
 
-    # ToDo: consideration of loses since export volume is the end product
     ships_required = np.ceil(export_volume / max_transport)
 
     return ships_required
@@ -520,10 +514,6 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
             carrier=exp_carrier + " export",
             p_set=profile,
         )
-    #else: 
-    #    raise ValueError(
-    #        f"Value {snakemake.params.export_endogenous} for ['export']['endogenous'] must be true or false."
-    #    )
 
     # add store at export bus depending on config settings
     if snakemake.params.export_destination_carrier == False and snakemake.params.export_crossborder == False:
@@ -649,15 +639,6 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
     )
 
     # ship transport
-    # assumptions:
-    # - boil-off losses are only considered for the outward journey (Source: 10.1109/EEM64765.2025.11050281)
-    # - storage as ship is only used for investment consideration
-    # improvements/analysis:
-    # - use get_ships_required() also for add_export()
-    # - shipping houer, fill time and unload time consideration for boil-off?
-    # - p_nom=1e7 or p_nom_extenable?
-    # - analyse global constraint ("==", ">=")
-
     # add export bus for ship transport
     n.madd(
         "Bus",
@@ -807,8 +788,6 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
             * costs.at[co2_intensity_carrier[fuel_export], "CO2 intensity"]
         ).sum()
         co2 = co2 / 8760
-        #snapshots = pd.date_range(freq="h", **snakemake.params.snapshots)
-        #co2 = pd.Series(co2, index=snapshots)
 
         # add load for fuel ship emissions
         n.add(
@@ -849,7 +828,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
 
     # determine ship investment costs based on export volume
     capital_cost = calculate_annuity(costs, discountrate).loc[f"{shipping_index[exp_carrier]} transport ship"] # Unit: €
-    capital_cost = capital_cost * ships_required.max() / export_volume  # Unit: €/MWh # Change ships_required based on ports
+    capital_cost = capital_cost * ships_required.max() / export_volume  # Unit: €/MWh 
 
     # add export link for ship costs
     n.madd(
@@ -860,7 +839,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
         carrier=exp_carrier + " export",
         p_nom=1e7, 
         efficiency=1,
-        marginal_cost=capital_cost, #ToDo: Rename label
+        marginal_cost=capital_cost, 
     )
 
     # add export bus for import port
@@ -880,7 +859,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
         carrier=exp_carrier + " export",
         p_nom=1e7, 
         efficiency=1,
-        marginal_cost=-price, #ToDo: adapt marginal_cost with export conversion
+        marginal_cost=-price, 
     )
 
     # add export conversion for import port
@@ -893,7 +872,6 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
             "Bus",
             export_destination_carrier + " destination carrier export",
             carrier=export_destination_carrier + " destination carrier export",
-            # add location
         )
 
         if exp_carrier == "LH2":
@@ -957,7 +935,6 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
             "Bus",
             export_destination_carrier + " destination carrier export",
             carrier=export_destination_carrier + " destination carrier export",
-            # add location
         )
 
         n.add(
