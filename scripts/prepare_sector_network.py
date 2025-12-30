@@ -904,8 +904,7 @@ def add_ammonia(n, costs):
         efficiency3=-costs.at["Haber-Bosch", "nitrogen-input"] * eff,
         capital_cost=costs.at["Haber-Bosch", "fixed"] * eff,
         #marginal_cost=costs.at["Haber-Bosch", "VOM"] * eff,
-        lifetime=costs.at["Haber-Bosch", "lifetime"],
-        p_min_pu = 0.3
+        lifetime=costs.at["Haber-Bosch", "lifetime"]
     )
 
     # Ammonia Storage
@@ -1578,7 +1577,7 @@ def add_methanol(n, costs):
         efficiency3=-costs.at["methanolisation", "electricity-input"] * 1 / costs.at["methanolisation", "hydrogen-input"],
         capital_cost=costs.at["methanolisation", "fixed"] * 1 / costs.at["methanolisation", "hydrogen-input"],
         lifetime=costs.at["methanolisation", "lifetime"],
-        p_min_pu=0.9425
+        p_min_pu=snakemake.params.sector["min_part_load_methanolisation"],
     )
 
 

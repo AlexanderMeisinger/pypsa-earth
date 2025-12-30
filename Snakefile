@@ -1097,6 +1097,7 @@ rule prepare_sector_network:
         foresight=config["foresight"],
         water_costs=config["custom_data"]["water_costs"],
         co2_budget=config["co2_budget"],
+        sector=config["sector"],
     input:
         **branch(sector_enable["land_transport"], TRANSPORT),
         **branch(sector_enable["heat"], HEAT),
