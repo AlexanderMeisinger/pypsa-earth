@@ -2797,6 +2797,15 @@ def add_dac(n, costs):
         lifetime=costs.at["direct air capture", "lifetime"],
     )
 
+    n.madd(
+            "Generator",
+            heat_buses.str.replace(" heat", " heat excess"),
+            bus=heat_buses,
+            carrier="heat excess",
+            p_nom_extendable=True,
+            p_max_pu=0, 
+            p_min_pu=-1,
+        )
 
 def add_services(n, costs, energy_totals):
     temporal_resolution = n.snapshot_weightings.generators
