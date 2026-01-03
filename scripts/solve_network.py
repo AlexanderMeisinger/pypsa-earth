@@ -1065,7 +1065,7 @@ def extra_functionality(n, snapshots):
         logger.info("setting CHP constraints")
         add_chp_constraints(n)
 
-    if n.links.index.str.contains("methanol crossborder export").any() and snakemake.config["export"]["co2_source"]["MEOH"] == "DAC":
+    if n.links.index.str.contains("methanol crossborder export").any() and snakemake.params.export_config["co2_source"]["MEOH"] == "DAC":
         logger.info("setting CO2 export constraints")
         add_export_co2_constraints(n, costs)
 
