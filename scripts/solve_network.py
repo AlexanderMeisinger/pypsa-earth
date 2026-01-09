@@ -787,7 +787,7 @@ def add_export_co2_constraints(n, costs):
     co2_export_input = co2_export_input.groupby("snapshot.year").sum()
     
     # Link - CO2 supply for export (DAC only)
-    co2_dac_index = n.links.index[n.links.carrier.isin(['DAC'])]
+    co2_dac_index = n.links.index[n.links.carrier.isin(['DAC with industrial heat pump'])]
 
     link_p = n.model["Link-p"]
     co2_dac = link_p.loc[:, co2_dac_index]
