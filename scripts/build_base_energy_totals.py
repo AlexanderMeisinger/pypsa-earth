@@ -398,6 +398,12 @@ if __name__ == "__main__":
                 f"Could not open the file from {zipurl}. "
                 "Using the data stored in google drive."
             )
+
+            zip_path = os.path.join(BASE_DIR, "data/demand/unsd/unsd.zip")
+
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
+
             download_gdrive(
                 file_id="1VUV0X-tTQECi2pHdE5EWXjPI2yeCdk6F",
                 dest_path=os.path.join(BASE_DIR, "data/demand/unsd/unsd.zip"),
