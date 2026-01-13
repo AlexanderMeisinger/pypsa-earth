@@ -770,7 +770,7 @@ def hydrogen_temporal_constraint(n, n_ref, time_period):
 
 def add_export_co2_constraints(n, costs):
     # Link - CO2 demand for export
-    co2_export_index = n.links.index[n.links.index.str.contains("crossborder export")]
+    co2_export_index = n.links.index[n.links.index.str.contains("methanol export")]
     link_p = n.model["Link-p"]
     co2_export = link_p.loc[:, co2_export_index]
 
