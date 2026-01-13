@@ -750,16 +750,6 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
     # - analyse zero ships
     # - regional fuel demand according to ship usage
 
-    # add carrier and bus for fuel ship loading
-    n.add("Carrier", fuel_export + " fuel ship export")
-
-    n.madd(
-        "Bus",
-        nodes_to_connect + " fuel ship export",
-        carrier=fuel_export + " fuel ship export",
-        location=nodes_to_connect
-    )
-
     # determine required amount of ships
     ship_capacity = shipping_data_transport.loc["capacity", "value"]
     ships_required = get_ships_required(export_volume, ship_capacity, shipping_hour)
@@ -784,40 +774,48 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
     ports_fuel_export_profil = pd.DataFrame([ports_fuel_export_profil] * len(snapshots), index=snapshots).astype(float)
     ports_fuel_export_profil.columns = fuel_nodes_to_connect + " fuel ship export"
 
+    # add carrier and bus for fuel ship loading
+    n.add("Carrier", fuel_export + " fuel ship export")
+
+    n.madd(
+        "Bus",
+        fuel_nodes_to_connect + " fuel ship export",
+        carrier=fuel_export + " fuel ship export",
+        location=nodes_to_connect
+    )
+
+    # match label for co2 intensity factor
+    co2_intensity_carrier = {
+        "oil": "oil",
+        "MEOH": "methanol",
+        "NH3": "NH3",
+        "LH2": "LH2"
+    }
+
+    costs.at["NH3", "CO2 intensity"] = 0
+    costs.at["LH2", "CO2 intensity"] = 0
+
+    # add link for fuel ship
+    n.madd(
+            "Link",
+            fuel_nodes_to_connect + " fuel ship export",
+            bus0=fuel_nodes_to_connect,
+            bus1=fuel_nodes_to_connect + " fuel ship export",
+            bus2="co2 atmosphere",
+            carrier=fuel_export + " fuel ship export",
+            p_nom=1e7, 
+            efficiency=1,
+            efficiency2=costs.at[co2_intensity_carrier[fuel_export], "CO2 intensity"]
+        )
+
     # add load for fuel ship
     n.madd(
         "Load",
         fuel_nodes_to_connect + " fuel ship export",
-        bus=fuel_nodes_to_connect,
+        bus=fuel_nodes_to_connect + " fuel ship export",
         carrier=fuel_export + " fuel ship export", 
         p_set=ports_fuel_export_profil,
     )
-
-    # consider emissions from fuel ship
-    if fuel_export in ["oil", "MEOH"]:
-        # match label from costs
-        co2_intensity_carrier = {
-            "oil": "oil",
-            "MEOH": "methanol"
-        }
-
-        # identify emissions due to fuel ship
-        co2 = (
-            ports_fuel_export_profil.sum()
-            * costs.at[co2_intensity_carrier[fuel_export], "CO2 intensity"]
-        ).sum()
-        co2 = co2 / 8760
-        #snapshots = pd.date_range(freq="h", **snakemake.params.snapshots)
-        #co2 = pd.Series(co2, index=snapshots)
-
-        # add load for fuel ship emissions
-        n.add(
-            "Load",
-            f"export shipping {fuel_export} emissions",
-            bus="co2 atmosphere",
-            carrier=fuel_export + " fuel ship export",
-            p_set=-co2,
-        )
 
     # add export bus for ship unloading
     n.madd(
