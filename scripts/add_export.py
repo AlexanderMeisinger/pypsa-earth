@@ -272,17 +272,22 @@ def get_shipping_route(origin, destination):
     return shipping_route
 
 
-def get_ships_required(export_volume, ship_capacity, shipping_hour):   
+def get_ships_required(export_volume, ship_capacity, shipping_hour, shipping_data_transport):   
     travel_time = 2 * shipping_hour
     fill_time = snakemake.params.export_ship_fill_time
     unload_time = snakemake.params.export_ship_unload_time
 
-    max_transport = ship_capacity * 8760 / (fill_time + travel_time + unload_time)
+    boil_off = (1-shipping_data_transport.loc["boil-off", "value"]/100)**shipping_hour
+    unloading_losses = 1-shipping_data_transport.loc["(un-) loading losses", "value"]/100
 
-    # ToDo: consideration of loses since export volume is the end product
+    # Calculate max transport per ship per year
+    max_transport = ship_capacity * boil_off * unloading_losses * 8760 / (fill_time + travel_time + unload_time)
+
+    # Calculate required amount of ships and number of round trips
     ships_required = np.ceil(export_volume / max_transport)
+    ships_num_round_trips = max_transport / (ship_capacity * boil_off * unloading_losses)
 
-    return ships_required
+    return ships_required, ships_num_round_trips
 
 
 def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fraction, costs, snakemake):
@@ -752,17 +757,25 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
 
     # determine required amount of ships
     ship_capacity = shipping_data_transport.loc["capacity", "value"]
-    ships_required = get_ships_required(export_volume, ship_capacity, shipping_hour)
+    ships_required, ships_num_round_trips = get_ships_required(export_volume, ship_capacity, shipping_hour, shipping_data_transport)
 
     # determine regional fuel amount based on port fraction
     ports_fuel_export_demand = pd.DataFrame(shipping_data_fuel.loc["energy demand", "value"] * 2 * shipping_distance).T # Double check conversion
-    ports_fuel_export_demand = ports_fuel_export_demand * ships_required.max() * (port_fraction/port_fraction.sum())
+    ports_fuel_export_demand = ports_fuel_export_demand * ships_required * ships_num_round_trips * (port_fraction/port_fraction.sum())
+
+    # labeling for export
+    export_label = {
+        "oil": "oil",
+        "MEOH": "methanol",
+        "NH3": "NH3",
+        "LH2": "H2 liquefaction"
+    }
 
     # adjust port bus in accordance to fuel carrier
     if fuel_export in ["LH2", "NH3", "MEOH"]:
         fuel_nodes_to_connect = nodes_to_connect
     elif fuel_export == "oil":
-        fuel_nodes_to_connect = nodes_to_connect.str.replace(exp_carrier, fuel_export)
+        fuel_nodes_to_connect = nodes_to_connect.str.replace(export_label[exp_carrier], export_label[fuel_export])
     elif fuel_nodes_to_connect[fuel_nodes_to_connect.isin(n.buses.index)].empty:
             print(f"Warning: None of the {fuel_export} buses exist!")
 
@@ -781,17 +794,10 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
         "Bus",
         fuel_nodes_to_connect + " fuel ship export",
         carrier=fuel_export + " fuel ship export",
-        location=nodes_to_connect
+        location=fuel_nodes_to_connect
     )
 
-    # match label for co2 intensity factor
-    co2_intensity_carrier = {
-        "oil": "oil",
-        "MEOH": "methanol",
-        "NH3": "NH3",
-        "LH2": "LH2"
-    }
-
+    # Add additional co2 intensity factor
     costs.at["NH3", "CO2 intensity"] = 0
     costs.at["LH2", "CO2 intensity"] = 0
 
@@ -805,7 +811,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
             carrier=fuel_export + " fuel ship export",
             p_nom=1e7, 
             efficiency=1,
-            efficiency2=costs.at[co2_intensity_carrier[fuel_export], "CO2 intensity"]
+            efficiency2=costs.at[export_label[fuel_export], "CO2 intensity"]
         )
 
     # add load for fuel ship
@@ -846,7 +852,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
     )
 
     # determine ship investment costs based on export volume
-    capital_cost = calculate_annuity(costs, discountrate).loc[f"{shipping_index[exp_carrier]} transport ship"] # Unit: €
+    capital_cost = costs.at[f"{shipping_index[exp_carrier]} transport ship", "fixed"] # Unit: €
     capital_cost = capital_cost * ships_required.max() / export_volume  # Unit: €/MWh # Change ships_required based on ports
 
     # add export link for ship costs
@@ -858,7 +864,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
         carrier=exp_carrier + " export",
         p_nom=1e7, 
         efficiency=1,
-        marginal_cost=capital_cost, #ToDo: Rename label
+        marginal_cost=capital_cost,
     )
 
     # add export bus for import port
