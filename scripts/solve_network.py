@@ -86,7 +86,7 @@ import numpy as np
 import pandas as pd
 import pypsa
 import xarray as xr
-from _helpers import configure_logging, create_logger, override_component_attrs
+from _helpers import configure_logging, create_logger, override_component_attrs, prepare_costs
 from linopy import merge
 from pypsa.descriptors import get_switchable_as_dense as get_as_dense
 from pypsa.optimization.abstract import optimize_transmission_expansion_iteratively
@@ -768,6 +768,45 @@ def hydrogen_temporal_constraint(n, n_ref, time_period):
         lhs = res.loc[label] + elec_input.loc[label]
         n.model.add_constraints(lhs >= 0.0, name=f"RESconstraints_{label}")
 
+def add_export_co2_constraints(n, costs):
+    # Link - CO2 demand for export
+    co2_export_index = n.links.index[n.links.index.str.contains("methanol export")]
+    link_p = n.model["Link-p"]
+    co2_export = link_p.loc[:, co2_export_index]
+
+    weightings_co2_export = pd.DataFrame(
+        np.outer(n.snapshot_weightings["generators"], [1.0] * len(co2_export_index)),
+        index=n.snapshots,
+        columns=co2_export_index,
+    )
+
+    co2_export_input = (-weightings_co2_export * co2_export).sum(
+        dim="Link"
+    )
+
+    co2_export_input = co2_export_input.groupby("snapshot.year").sum()
+    
+    # Link - CO2 supply for export (DAC only)
+    co2_dac_index = n.links.index[n.links.carrier.isin(['DAC with industrial heat pump'])]
+
+    link_p = n.model["Link-p"]
+    co2_dac = link_p.loc[:, co2_dac_index]
+
+    weightings_co2_dac= pd.DataFrame(
+        np.outer(n.snapshot_weightings["generators"], [1.0] * len(co2_dac_index)),
+        index=n.snapshots,
+        columns=co2_dac_index,
+    )
+
+    co2_dac_input = (weightings_co2_dac * co2_dac).sum(
+        dim="Link"
+    )
+
+    co2_dac_input = co2_dac_input.groupby("snapshot.year").sum()
+
+    # Defining the constraints
+    lhs = co2_dac_input + (co2_export_input * costs.at["methanol", "CO2 intensity"]) # 0.2482 tCO2/MWh_th
+    n.model.add_constraints(lhs >= 0, name=f"CO2EXPORTconstraint")
 
 def add_chp_constraints(n):
     electric_bool = (
@@ -988,6 +1027,20 @@ def extra_functionality(n, snapshots):
     """
     opts = n.opts
     config = n.config
+
+    # Prepare the costs dataframe
+    Nyears = n.snapshot_weightings.generators.sum() / 8760
+    costs = prepare_costs(
+        snakemake.input.costs,
+        snakemake.config["costs"],
+        snakemake.params.costs["output_currency"],
+        snakemake.params.costs["fill_values"],
+        Nyears,
+        snakemake.params.costs["default_exchange_rate"],
+        snakemake.params.costs["future_exchange_rate_strategy"],
+        snakemake.params.costs["custom_future_exchange_rate"],
+    )
+
     if "BAU" in opts and n.generators.p_nom_extendable.any():
         add_BAU_constraints(n, config)
     if "SAFE" in opts and n.generators.p_nom_extendable.any():
@@ -1011,6 +1064,10 @@ def extra_functionality(n, snapshots):
     if snakemake.config["sector"]["chp"]:
         logger.info("setting CHP constraints")
         add_chp_constraints(n)
+
+    if n.links.index.str.contains("methanol crossborder export").any() and snakemake.params.export_config["co2_source"]["MEOH"] == "DAC":
+        logger.info("setting CO2 export constraints")
+        add_export_co2_constraints(n, costs)
 
     additionality = snakemake.params.policy_config["hydrogen"]["additionality"]
     ref_for_additionality = snakemake.params.policy_config["hydrogen"]["is_reference"]

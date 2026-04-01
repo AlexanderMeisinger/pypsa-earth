@@ -792,10 +792,13 @@ if config["monte_carlo"]["options"].get("add_to_snakefile", False) == False:
     rule solve_network:
         params:
             solving=config["solving"],
+            costs=config["costs"],
             augmented_line_connection=config["augmented_line_connection"],
             policy_config=config["policy_config"],
+            export_config=config["export"],
         input:
             overrides=BASE_DIR + "/data/override_component_attrs",
+            costs="resources/" + RDIR + "costs_{planning_horizons}.csv",
             network="networks/" + RDIR + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
         output:
             "results/" + RDIR + "networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
@@ -862,11 +865,14 @@ if config["monte_carlo"]["options"].get("add_to_snakefile", False) == True:
             solving=config["solving"],
             augmented_line_connection=config["augmented_line_connection"],
             policy_config=config["policy_config"],
+            export_config=config["export"],
+            costs=config["costs"],
         input:
             overrides=BASE_DIR + "/data/override_component_attrs",
             network="networks/"
             + RDIR
             + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{unc}.nc",
+            costs="resources/" + RDIR + "costs_{planning_horizons}.csv",
         output:
             "results/"
             + RDIR
@@ -1645,6 +1651,8 @@ if config["foresight"] == "overnight":
             solving=config["solving"],
             augmented_line_connection=config["augmented_line_connection"],
             policy_config=config["policy_config"],
+            export_config=config["export"],
+            costs=config["costs"],
         input:
             overrides=BASE_DIR + "/data/override_component_attrs",
             # network=RESDIR
@@ -2119,6 +2127,8 @@ if config["foresight"] == "myopic":
             ),
             augmented_line_connection=config["augmented_line_connection"],
             policy_config=config["policy_config"],
+            export_config=config["export"],
+            costs=config["costs"],
         input:
             overrides=BASE_DIR + "/data/override_component_attrs",
             network=RESDIR
