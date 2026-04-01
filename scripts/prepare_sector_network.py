@@ -88,24 +88,15 @@ def add_carrier_buses(n, carrier, nodes=None):
 
     n.madd("Bus", nodes, location=location, carrier=carrier, unit=unit)
 
-    n.madd(
-        "Store",
-        nodes + " Store",
-        bus=nodes,
-        e_nom_extendable=True,
-        e_cyclic=True,
-        carrier=carrier,
-        capital_cost=capital_cost,
-    )
-
-    if carrier in ["biomass"]:
+    if carrier != "biomass":
         n.madd(
-            "Generator",
-            nodes,
+            "Store",
+            nodes + " Store",
             bus=nodes,
-            p_nom_extendable=True,
+            e_nom_extendable=True,
+            e_cyclic=True,
             carrier=carrier,
-            marginal_cost=costs.at[carrier, "fuel"],
+            capital_cost=capital_cost,
         )
     
     fossils = ["coal", "gas", "oil", "lignite", "coal"] # important to exclude methanol with marginal costs of 0
