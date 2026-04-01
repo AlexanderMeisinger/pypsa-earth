@@ -267,16 +267,22 @@ def get_shipping_route(origin, destination):
     return shipping_route
 
 
-def get_ships_required(export_volume, ship_capacity, shipping_hour):   
+def get_ships_required(export_volume, ship_capacity, shipping_hour, shipping_data_transport):   
     travel_time = 2 * shipping_hour
     fill_time = snakemake.params.export_ship_fill_time
     unload_time = snakemake.params.export_ship_unload_time
 
-    max_transport = ship_capacity * 8760 / (fill_time + travel_time + unload_time)
+    boil_off = (1-shipping_data_transport.loc["boil-off", "value"]/100)**shipping_hour
+    unloading_losses = 1-shipping_data_transport.loc["(un-) loading losses", "value"]/100
 
+    # Calculate max transport per ship per year
+    max_transport = ship_capacity * boil_off * unloading_losses * 8760 / (fill_time + travel_time + unload_time)
+
+    # Calculate required amount of ships and number of round trips
     ships_required = np.ceil(export_volume / max_transport)
+    ships_num_round_trips = max_transport / (ship_capacity * boil_off * unloading_losses)
 
-    return ships_required
+    return ships_required, ships_num_round_trips
 
 
 def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fraction, costs, snakemake):
