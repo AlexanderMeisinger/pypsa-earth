@@ -865,7 +865,7 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
         elif exp_carrier == "MEOH":
             n.add(
                 "Link",
-                exp_carrier + "Methanol steam reforming",
+                exp_carrier + " steam reforming",
                 bus0=exp_carrier + " crossborder export",
                 bus1=export_destination_carrier + " destination carrier export",
                 #bus2="co2 atmosphere", # already considered
