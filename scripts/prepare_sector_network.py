@@ -870,6 +870,7 @@ def add_ammonia(n, costs):
         p_nom_extendable=True,
         carrier="air separation unit",
         capital_cost=costs.at["air separation unit", "fixed"], #Currency/t_N2
+        lifetime=costs.at["air separation unit", "lifetime"],
     )
     
     n.add("Carrier", "NH3")
@@ -899,7 +900,8 @@ def add_ammonia(n, costs):
         efficiency2=-costs.at["Haber-Bosch", "hydrogen-input"] * eff,
         efficiency3=-costs.at["Haber-Bosch", "nitrogen-input"] * eff,
         capital_cost=costs.at["Haber-Bosch", "fixed"] * eff,
-        marginal_cost=costs.at["Haber-Bosch", "VOM"] * eff,
+        #marginal_cost=costs.at["Haber-Bosch", "VOM"] * eff,
+        lifetime=costs.at["Haber-Bosch", "lifetime"]
     )
 
     # Ammonia Storage
