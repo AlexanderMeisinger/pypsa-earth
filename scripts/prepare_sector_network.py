@@ -146,7 +146,7 @@ def add_generation(
     # Not required, because nodes are already defined in "nodes"
     # nodes = pop_layout.index
 
-    fallback = {"OCGT": "gas"}
+    fallback = {"OCGT": "gas", "CCGT": "gas"}
     conventionals = options.get("conventional_generation", fallback)
 
     for generator, carrier in conventionals.items():
