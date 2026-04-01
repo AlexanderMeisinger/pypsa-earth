@@ -1566,7 +1566,7 @@ def add_methanol(n, costs):
         bus0=spatial.nodes + " H2",
         bus1=spatial.methanol.nodes,
         bus2=spatial.co2.nodes,
-        buse3=spatial.nodes,
+        bus3=spatial.nodes,
         p_nom_extendable=True,
         carrier="methanolisation",
         efficiency=1 / costs.at["methanolisation", "hydrogen-input"],
