@@ -1574,6 +1574,7 @@ def add_methanol(n, costs):
         efficiency3=-costs.at["methanolisation", "electricity-input"] * 1 / costs.at["methanolisation", "hydrogen-input"],
         capital_cost=costs.at["methanolisation", "fixed"] * 1 / costs.at["methanolisation", "hydrogen-input"],
         lifetime=costs.at["methanolisation", "lifetime"],
+        p_min_pu=snakemake.params.sector["min_part_load_methanolisation"],
     )
 
 
