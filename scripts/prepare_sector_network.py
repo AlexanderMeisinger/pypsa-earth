@@ -2794,6 +2794,41 @@ def add_dac(n, costs):
         lifetime=costs.at["direct air capture", "lifetime"],
     )
 
+    n.madd(
+        "Bus",
+        spatial.nodes + " heat for DAC with industrial heat pump",
+        location=spatial.nodes,
+        carrier="heat for DAC with industrial heat pump",
+    )
+
+    n.madd(
+        "Link",
+        spatial.nodes + " industrial heat pump medium temperature",
+        bus0=spatial.nodes,
+        bus1=spatial.nodes + " heat for DAC with industrial heat pump",
+        carrier="industrial heat pump medium temperature",
+        efficiency=costs.at["industrial heat pump medium temperature", "efficiency"],
+        capital_cost=costs.at["industrial heat pump medium temperature", "fixed"] * costs.at["industrial heat pump medium temperature", "efficiency"],
+        p_nom_extendable=True,
+        lifetime=costs.at["industrial heat pump medium temperature", "lifetime"],
+    )
+
+    n.madd(
+        "Link",
+        spatial.nodes + " DAC with industrial heat pump",
+        bus0="co2 atmosphere",
+        bus1=spatial.co2.nodes,
+        bus2=spatial.nodes,
+        bus3=spatial.nodes + " heat for DAC with industrial heat pump",
+        carrier="DAC with industrial heat pump",
+        capital_cost=costs.at["direct air capture", "fixed"],
+        efficiency=1.0,
+        efficiency2=efficiency2,
+        efficiency3=efficiency3,
+        p_nom_extendable=True,
+        lifetime=costs.at["direct air capture", "lifetime"],
+    )
+
 
 def add_services(n, costs, energy_totals):
     temporal_resolution = n.snapshot_weightings.generators
