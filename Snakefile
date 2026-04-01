@@ -1177,6 +1177,7 @@ rule add_export:
         export_reconversion_LH2_H2=config["export"]["export_crossborder"]["MWh_LH2_per_MWh_H2"],
         export_reconversion_NH3_H2=config["export"]["export_crossborder"]["MWh_NH3_per_MWh_H2"],
         export_reconversion_MEOH_H2=config["export"]["export_crossborder"]["MWh_MEOH_per_MWh_H2"],
+        export_location=config["export"]["export_crossborder"]["destination"],
         snapshots=config["snapshots"],
         costs=config["costs"],
     input:
