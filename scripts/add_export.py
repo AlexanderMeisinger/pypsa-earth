@@ -353,17 +353,8 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
     x_export = country_shape.geometry.centroid.x.min() - 2
     y_export = country_shape.geometry.centroid.y.max() + 2
 
-    # add one central export bus and carrier
+    # add one central export carrier
     n.add("Carrier", exp_carrier + " export")
-
-    n.add(
-        "Bus",
-        exp_carrier + " export",
-        carrier=exp_carrier + " export",
-        location="Earth",
-        x=x_export,
-        y=y_export,
-    )
 
     # add links for exports without co2 intensity through export carrier
     if exp_carrier in ["H2", "NH3", "LH2"]:
@@ -384,7 +375,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
                 "Bus",
                 nodes_to_connect + " export",
                 carrier=exp_carrier + " export",
-                #location
+                location=nodes_to_connect
             )
 
             n.madd(
@@ -399,6 +390,15 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
 
             add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, profile)
         else:
+            n.add(
+                "Bus",
+                exp_carrier + " export",
+                carrier=exp_carrier + " export",
+                location="Earth",
+                x=x_export,
+                y=y_export,
+            )
+            
             n.madd(
                     "Link",
                     nodes_to_connect + " export",
@@ -439,7 +439,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
                 "Bus",
                 nodes_to_connect + " export",
                 carrier=exp_carrier + " export",
-                #location
+                location=nodes_to_connect
             )
             
             n.madd(
@@ -451,7 +451,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
                     carrier=exp_carrier + " export",
                     p_nom=1e7, 
                     efficiency=1,
-                    efficiency2=co2_intensity, # ToDo: negativ?
+                    efficiency2=co2_intensity,
                 )
 
             add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, profile)
@@ -465,7 +465,7 @@ def add_export(n, exp_carrier, volume, price, profile, nodes_with_port, port_fra
                     carrier=exp_carrier + " export",
                     p_nom=1e7, 
                     efficiency=1,
-                    efficiency2=co2_intensity, # ToDo: negativ?
+                    efficiency2=co2_intensity,
                     marginal_cost=-price,
                 )
 
@@ -706,9 +706,8 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
     n.madd(
         "Load",
         fuel_nodes_to_connect + " fuel ship export",
-        bus=fuel_nodes_to_connect,
-        carrier=fuel_export + " fuel ship export", 
-        p_set=ports_fuel_export_profil,
+        carrier=fuel_export + " fuel ship export",
+        location=fuel_nodes_to_connect
     )
 
     # consider emissions from fuel ship
@@ -784,7 +783,9 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
         "Bus",
         exp_carrier + " crossborder export",
         carrier=exp_carrier + " export",
-        location=nodes_to_connect
+        location = "Earth",
+        x=snakemake.params.export_location[0],
+        y=snakemake.params.export_location[1],
     )
 
     # add export link for import port
@@ -809,6 +810,9 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
             "Bus",
             export_destination_carrier + " destination carrier export",
             carrier=export_destination_carrier + " destination carrier export",
+            location = "Earth",
+            x=snakemake.params.export_location[0],
+            y=snakemake.params.export_location[1],
         )
 
         if exp_carrier == "LH2":
@@ -872,6 +876,9 @@ def add_export_crossborder(exp_carrier, nodes_to_connect, port_fraction, price, 
             "Bus",
             export_destination_carrier + " destination carrier export",
             carrier=export_destination_carrier + " destination carrier export",
+            location = "Earth",
+            x=snakemake.params.export_location[0],
+            y=snakemake.params.export_location[1],
         )
 
         n.add(
