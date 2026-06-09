@@ -361,13 +361,13 @@ def attach_extendable_generators(n, costs, geothermal_pot):
                 p_nom=0.0,
                 p_nom_min=0.0,
                 p_nom_max = geothermal_pot.loc[outer_intersec, "potential [MWel]"].values,
-                p_max_pu = 0.67,
+                p_max_pu = 0.93, # Source: https://pppkenya.go.ke/wp-content/uploads/2020/07/Annex-4-LCPDP.pdf; p. 112
                 capital_cost=costs.at["geothermal", "capital_cost"],
                 marginal_cost=costs.at["geothermal", "marginal_cost"],
                 efficiency=costs.at["geothermal", "efficiency"],
             )
             print(n.generators[n.generators.carrier == "geothermal"].p_max_pu)
-            n.generators.loc[n.generators.carrier == "geothermal", "p_max_pu"] = 0.67
+            n.generators.loc[n.generators.carrier == "geothermal", "p_max_pu"] = 0.93 # Source: https://pppkenya.go.ke/wp-content/uploads/2020/07/Annex-4-LCPDP.pdf; p. 112
             print(n.generators[n.generators.carrier == "geothermal"].p_max_pu)
 
 
