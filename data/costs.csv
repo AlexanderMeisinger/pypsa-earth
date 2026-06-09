@@ -16,7 +16,7 @@ lignite,2030,lifetime,40,years,IEA2010
 geothermal,2030,lifetime,40,years,IEA2010
 biomass,2030,lifetime,30,years,ECF2010 in DIW DataDoc http://hdl.handle.net/10419/80348
 oil,2030,lifetime,30,years,ECF2010 in DIW DataDoc http://hdl.handle.net/10419/80348
-onwind,2030,investment,1040,EUR/kWel,DEA https://ens.dk/en/our-services/projections-and-models/technology-data
+onwind,2030,investment,1200,EUR/kWel,Stener internal discussion in Kenya
 offwind,2030,investment,1640,EUR/kWel,DEA https://ens.dk/en/our-services/projections-and-models/technology-data
 offwind-ac-station,2030,investment,250,EUR/kWel,DEA https://ens.dk/en/our-services/projections-and-models/technology-data
 offwind-ac-connection-submarine,2030,investment,2685,EUR/MW/km,DEA https://ens.dk/en/our-services/projections-and-models/technology-data
@@ -24,7 +24,7 @@ offwind-ac-connection-underground,2030,investment,1342,EUR/MW/km,DEA https://ens
 offwind-dc-station,2030,investment,400,EUR/kWel,Haertel 2017; assuming one onshore and one offshore node + 13% learning reduction
 offwind-dc-connection-submarine,2030,investment,2000,EUR/MW/km,DTU report based on Fig 34 of https://ec.europa.eu/energy/sites/ener/files/documents/2014_nsog_report.pdf
 offwind-dc-connection-underground,2030,investment,1000,EUR/MW/km,Haertel 2017; average + 13% learning reduction
-solar,2030,investment,600,EUR/kWel,DIW DataDoc http://hdl.handle.net/10419/80348
+solar,2030,investment,650,EUR/kWel,Sterner internal discussion in Kenya
 biomass,2030,investment,2209,EUR/kWel,DIW DataDoc http://hdl.handle.net/10419/80348
 geothermal,2030,investment,1949,EUR/kWel,https://energy.go.ke/sites/default/files/KAWI/Kenya-ETIP-2050%202.pdf p. 54; conversion factor 0.93
 coal,2030,investment,1300,EUR/kWel,DIW DataDoc http://hdl.handle.net/10419/80348 PC (Advanced/SuperC)
