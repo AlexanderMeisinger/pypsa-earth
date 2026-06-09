@@ -2,12 +2,11 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-name: pypsa-earth
+name: pypsa-earth-kenya
 channels:
-- bioconda
-- gurobi
 - conda-forge
-- defaults
+- gurobi
+- bioconda
 dependencies:
 - _libgcc_mutex=0.1
 - _openmp_mutex=4.5
@@ -120,7 +119,7 @@ dependencies:
 - executing=2.1.0
 - expat=2.6.3
 - filelock=3.16.1
-- fiona=1.10.1
+- fiona=1.9.6
 - fmt=10.2.1
 - folium=0.17.0
 - font-ttf-dejavu-sans-mono=2.37
@@ -573,4 +572,5 @@ dependencies:
   - highspy==1.7.2
   - numpoly==1.2.13
   - tsam==2.3.3
-  - vresutils==0.3.2.dev11+g150c1be
+  - git+https://github.com/FRESNA/vresutils.git@150c1be
+  - fake_useragent==2.2.0
