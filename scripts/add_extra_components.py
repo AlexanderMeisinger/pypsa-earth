@@ -390,15 +390,15 @@ if __name__ == "__main__":
         Nyears,
     )
 
-    geothermal_pot = pd.read_csv('/mnt/e/Github-Alex/pypsa-earth/data/geothermal_potential-3.csv', index_col=["name"]).sort_index()
+    geothermal_pot = pd.read_csv('/home/alex-charly/SSD/H2GMA/Github/AP2/ind-scenario/Kenya/analyse-pypsa-kenya/workflow/notebooks/Geothermal-Potential-Great-Rift-Valley/geothermal_potential_ac_10GW.csv', index_col=["name"]).sort_index()
 
     attach_storageunits(n, costs, config)
     attach_stores(n, costs, config)
     attach_hydrogen_pipelines(n, costs, config)
 
     add_nice_carrier_names(n, config=snakemake.config)
-
-    attach_extendable_generators(n, costs, geothermal_pot)
+    if config["electricity"]["estimate_renewable_capacities"]["geothermal_potential"]:
+        attach_extendable_generators(n, costs, geothermal_pot)
 
     attach_electricity_export(n, config)
 
