@@ -853,6 +853,26 @@ def add_existing(n):
             tech_index = n.generators[n.generators.carrier == tech].index
             n.generators.loc[tech_index, tech] = existing_res
 
+def add_geothermal_cap_limit(n, geothermal_potential):
+    geothermal_gens = n.generators.index[
+        n.generators.carrier == "geothermal"
+    ]
+
+    if len(geothermal_gens) == 0:
+        return
+
+    lhs = linexpr(
+        (1, get_var(n, "Generator", "p_nom")[geothermal_gens])
+    ).sum()
+
+    define_constraints(
+        n,
+        lhs,
+        "<=",
+        geothermal_potential,  # MW
+        "Geothermal",
+        "max_total_capacity",
+    )
 
 def extra_functionality(n, snapshots):
     """
@@ -873,6 +893,9 @@ def extra_functionality(n, snapshots):
     reserve = config["electricity"].get("operational_reserve", {})
     if reserve.get("activate"):
         add_operational_reserve_margin(n, snapshots, config)
+    if config["estimate_renewable_capacities"]["geothermal_potential"]:
+        geothermal_potential = config["estimate_renewable_capacities"]["geothermal_potential_level"]
+        add_geothermal_cap_limit(n, geothermal_potential)
     for o in opts:
         if "RES" in o:
             res_share = float(re.findall("[0-9]*\.?[0-9]+$", o)[0])
