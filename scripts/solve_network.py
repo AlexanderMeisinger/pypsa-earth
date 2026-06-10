@@ -893,8 +893,8 @@ def extra_functionality(n, snapshots):
     reserve = config["electricity"].get("operational_reserve", {})
     if reserve.get("activate"):
         add_operational_reserve_margin(n, snapshots, config)
-    if config["estimate_renewable_capacities"]["geothermal_potential"]:
-        geothermal_potential = config["estimate_renewable_capacities"]["geothermal_potential_level"]
+    if config["electricity"]["estimate_renewable_capacities"]["geothermal_potential"]:
+        geothermal_potential = config["electricity"]["estimate_renewable_capacities"]["geothermal_potential_level"]
         add_geothermal_cap_limit(n, geothermal_potential)
     for o in opts:
         if "RES" in o:
