@@ -1365,6 +1365,7 @@ rule add_export:
         export_profile=config["export"]["export_profile"],
         export_endogenous=config["export"]["endogenous"],
         endogenous_price=config["export"]["endogenous_price"],
+        h2potential=config["export"]["h2potential"],
         snapshots=config["snapshots"],
     input:
         export_ports="resources/" + SECDIR + "export_ports.csv",

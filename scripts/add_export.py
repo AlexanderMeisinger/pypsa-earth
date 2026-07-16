@@ -60,6 +60,11 @@ def select_ports(n):
         logger.info(
             "No hydrogen export ports are found. Setting all hydrogen buses as export nodes"
         )
+    elif snakemake.params.export_endogenous and snakemake.params.h2potential:
+        hydrogen_buses_ports = n.buses[n.buses.carrier == "H2"]
+        logger.info(
+            f"H2 potential: Setting all hydrogen buses as export nodes. H2 price: {snakemake.params.export_endogenous} €/MWh."
+        )
     else:
         hydrogen_buses_ports = n.buses.loc[ports_sel.index + " H2"]
 
