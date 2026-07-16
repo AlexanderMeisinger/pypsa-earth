@@ -3792,7 +3792,9 @@ def convert_conventional_generators_to_links(
             continue
 
         # Map each generator's AC bus to its fuel bus using spatial
-        fuel_carrier_df = vars(spatial)[fuel_carrier].df
+        fuel_carrier_df = vars(spatial)[fuel_carrier].df  
+        # Remove mismatch of buses (Romania)
+        carrier_gens = carrier_gens[~carrier_gens.index.str.contains("RO.26_1_AC")]
         fuel_buses = fuel_carrier_df.loc[carrier_gens["bus"], "nodes"]
 
         # Add generators as links
